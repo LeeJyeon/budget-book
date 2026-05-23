@@ -12,6 +12,11 @@ interface TransactionRepository : JpaRepository<Transaction, Long>, JpaSpecifica
 
     fun findTop10ByOrderByOccurredAtDescIdDesc(): List<Transaction>
 
+    fun findTop10ByOccurredAtBetweenOrderByOccurredAtDescIdDesc(
+        from: LocalDateTime,
+        to: LocalDateTime,
+    ): List<Transaction>
+
     @Query(
         """
         SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t

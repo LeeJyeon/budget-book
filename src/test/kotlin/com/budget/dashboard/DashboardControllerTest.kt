@@ -82,13 +82,14 @@ class DashboardControllerTest @Autowired constructor(
         val asOf = LocalDate.of(2026, 1, 1)
         every { balanceService.listAll() } returns balanceViews(asOf)
         every { statsService.sectionSummary(any(), any()) } returns monthSummary()
-        every { transactionRepository.findTop10ByOrderByOccurredAtDescIdDesc() } returns emptyList()
+        every { transactionRepository.findTop10ByOccurredAtBetweenOrderByOccurredAtDescIdDesc(any(), any()) } returns emptyList()
 
         mockMvc.perform(get("/"))
             .andExpect(status().isOk)
             .andExpect(model().attributeExists("balances", "monthSummary", "recentTransactions", "balanceCards"))
+            .andExpect(model().attributeExists("selectedMonth", "prevMonth", "nextMonth", "totalCurrentBalance"))
             .andExpect(content().string(containsString("안녕하세요")))
-            .andExpect(content().string(containsString("이번 달 요약")))
+            .andExpect(content().string(containsString("총 잔액")))
     }
 
     @Test
@@ -96,7 +97,7 @@ class DashboardControllerTest @Autowired constructor(
         val asOf = LocalDate.of(2026, 1, 1)
         every { balanceService.listAll() } returns balanceViews(asOf)
         every { statsService.sectionSummary(any(), any()) } returns monthSummary()
-        every { transactionRepository.findTop10ByOrderByOccurredAtDescIdDesc() } returns emptyList()
+        every { transactionRepository.findTop10ByOccurredAtBetweenOrderByOccurredAtDescIdDesc(any(), any()) } returns emptyList()
 
         val result = mockMvc.perform(get("/"))
             .andExpect(status().isOk)
@@ -129,12 +130,47 @@ class DashboardControllerTest @Autowired constructor(
         )
         every { balanceService.listAll() } returns balanceViews(asOf)
         every { statsService.sectionSummary(any(), any()) } returns monthSummary()
-        every { transactionRepository.findTop10ByOrderByOccurredAtDescIdDesc() } returns listOf(tx)
+        every {
+            transactionRepository.findTop10ByOccurredAtBetweenOrderByOccurredAtDescIdDesc(any(), any())
+        } returns listOf(tx)
 
         mockMvc.perform(get("/"))
             .andExpect(status().isOk)
             .andExpect(model().attribute("recentTransactions", listOf(tx)))
             .andExpect(content().string(containsString("마트")))
+    }
+
+    @Test
+    fun `GET root with month query param selects that YearMonth`() {
+        val asOf = LocalDate.of(2026, 1, 1)
+        every { balanceService.listAll() } returns balanceViews(asOf)
+        every { statsService.sectionSummary(any(), any()) } returns monthSummary()
+        every {
+            transactionRepository.findTop10ByOccurredAtBetweenOrderByOccurredAtDescIdDesc(any(), any())
+        } returns emptyList()
+
+        mockMvc.perform(get("/").param("month", "2026-03"))
+            .andExpect(status().isOk)
+            .andExpect(model().attribute("selectedMonth", "2026-03"))
+            .andExpect(model().attribute("prevMonth", "2026-02"))
+            .andExpect(model().attribute("nextMonth", "2026-04"))
+            .andExpect(model().attribute("monthFrom", LocalDate.of(2026, 3, 1)))
+            .andExpect(model().attribute("monthTo", LocalDate.of(2026, 3, 31)))
+            .andExpect(model().attribute("isCurrentMonth", false))
+    }
+
+    @Test
+    fun `GET root with invalid month param falls back to current month`() {
+        val asOf = LocalDate.of(2026, 1, 1)
+        every { balanceService.listAll() } returns balanceViews(asOf)
+        every { statsService.sectionSummary(any(), any()) } returns monthSummary()
+        every {
+            transactionRepository.findTop10ByOccurredAtBetweenOrderByOccurredAtDescIdDesc(any(), any())
+        } returns emptyList()
+
+        mockMvc.perform(get("/").param("month", "not-a-month"))
+            .andExpect(status().isOk)
+            .andExpect(model().attribute("isCurrentMonth", true))
     }
 
 }

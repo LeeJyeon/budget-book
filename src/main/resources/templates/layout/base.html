@@ -6,58 +6,102 @@
     <meta name="_csrf" th:content="${_csrf?.token}">
     <meta name="_csrf_header" th:content="${_csrf?.headerName}">
     <title th:text="${pageTitle ?: 'budget-book'}">budget-book</title>
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Pretendard Variable"', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+            },
+            colors: {
+              brand:   { 50:'#eef2ff', 100:'#e0e7ff', 500:'#6366f1', 600:'#4f46e5', 700:'#4338ca' },
+              shared:  { 50:'#eef2ff', 500:'#6366f1', 600:'#4f46e5' },   /* indigo */
+              husband: { 50:'#f0f9ff', 500:'#0ea5e9', 600:'#0284c7' },   /* sky    */
+              wife:    { 50:'#fdf2f8', 500:'#ec4899', 600:'#db2777' },   /* pink   */
+              income:  { 500:'#10b981', 600:'#059669' },                  /* emerald */
+              expense: { 500:'#f43f5e', 600:'#e11d48' },                  /* rose   */
+              ink:     { 900:'#0f172a', 700:'#334155', 500:'#64748b', 300:'#cbd5e1', 100:'#f1f5f9', 50:'#f8fafc' },
+            },
+            boxShadow: {
+              card: '0 1px 2px rgba(15,23,42,.04), 0 1px 3px rgba(15,23,42,.06)',
+            },
+            borderRadius: {
+              '2xl': '1rem',
+            },
+          }
+        }
+      }
+    </script>
+
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+    <style>
+      html, body { font-feature-settings: "tnum" 1, "ss01" 1; }
+      .tabular   { font-variant-numeric: tabular-nums; }
+    </style>
     <script>
-      // CSRF for HTMX
       document.addEventListener('htmx:configRequest', (evt) => {
-        const token = document.querySelector('meta[name="_csrf"]')?.content;
+        const token  = document.querySelector('meta[name="_csrf"]')?.content;
         const header = document.querySelector('meta[name="_csrf_header"]')?.content;
         if (token && header) evt.detail.headers[header] = token;
       });
     </script>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen">
-<nav class="bg-white border-b">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-        <a href="/" class="text-lg font-bold">💰 budget-book</a>
-        <div class="hidden sm:flex gap-4 text-sm">
-            <a href="/" class="hover:underline">대시보드</a>
-            <a href="/transactions" class="hover:underline">거래</a>
-            <a href="/recurring" class="hover:underline">정기 지출</a>
-            <a href="/tags" class="hover:underline">태그</a>
-            <a href="/balances" class="hover:underline">기초자산</a>
-            <a href="/stats" class="hover:underline">통계</a>
+<body class="font-sans bg-ink-50 text-ink-900 min-h-screen antialiased">
+
+<nav class="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-ink-100">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+        <div class="flex items-center justify-between h-14">
+            <a href="/" class="flex items-center gap-2 font-bold text-ink-900">
+                <span class="inline-grid place-items-center w-7 h-7 rounded-lg bg-brand-600 text-white text-sm">₩</span>
+                <span class="tracking-tight">budget-book</span>
+            </a>
+            <div class="hidden md:flex items-center gap-1 text-sm">
+                <a href="/"             class="px-3 py-1.5 rounded-lg text-ink-700 hover:bg-ink-100 hover:text-ink-900 transition">대시보드</a>
+                <a href="/transactions" class="px-3 py-1.5 rounded-lg text-ink-700 hover:bg-ink-100 hover:text-ink-900 transition">거래</a>
+                <a href="/recurring"    class="px-3 py-1.5 rounded-lg text-ink-700 hover:bg-ink-100 hover:text-ink-900 transition">정기 지출</a>
+                <a href="/tags"         class="px-3 py-1.5 rounded-lg text-ink-700 hover:bg-ink-100 hover:text-ink-900 transition">태그</a>
+                <a href="/balances"     class="px-3 py-1.5 rounded-lg text-ink-700 hover:bg-ink-100 hover:text-ink-900 transition">기초자산</a>
+                <a href="/stats"        class="px-3 py-1.5 rounded-lg text-ink-700 hover:bg-ink-100 hover:text-ink-900 transition">통계</a>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-ink-500" th:if="${currentUser}">
+                <span class="hidden sm:inline" th:text="${currentUser.displayName}">user</span>
+                <form th:action="@{/logout}" method="post" class="inline">
+                    <button class="text-ink-700 hover:text-brand-600 underline-offset-2 hover:underline" type="submit">로그아웃</button>
+                </form>
+            </div>
         </div>
-        <div class="text-xs text-gray-600" th:if="${currentUser}">
-            <span th:text="${currentUser.displayName}">user</span>
-            <form th:action="@{/logout}" method="post" class="inline ml-2">
-                <button class="text-blue-600 hover:underline" type="submit">로그아웃</button>
-            </form>
-        </div>
-    </div>
-    <div class="sm:hidden border-t">
-        <div class="max-w-5xl mx-auto px-4 py-2 flex gap-3 text-xs overflow-x-auto">
-            <a href="/" class="hover:underline">대시보드</a>
-            <a href="/transactions" class="hover:underline">거래</a>
-            <a href="/recurring" class="hover:underline">정기</a>
-            <a href="/tags" class="hover:underline">태그</a>
-            <a href="/balances" class="hover:underline">기초자산</a>
-            <a href="/stats" class="hover:underline">통계</a>
+        <div class="md:hidden border-t border-ink-100">
+            <div class="flex gap-1 overflow-x-auto py-2 text-xs">
+                <a href="/" class="shrink-0 px-3 py-1.5 rounded-lg text-ink-700 hover:bg-ink-100">대시보드</a>
+                <a href="/transactions" class="shrink-0 px-3 py-1.5 rounded-lg text-ink-700 hover:bg-ink-100">거래</a>
+                <a href="/recurring" class="shrink-0 px-3 py-1.5 rounded-lg text-ink-700 hover:bg-ink-100">정기</a>
+                <a href="/tags" class="shrink-0 px-3 py-1.5 rounded-lg text-ink-700 hover:bg-ink-100">태그</a>
+                <a href="/balances" class="shrink-0 px-3 py-1.5 rounded-lg text-ink-700 hover:bg-ink-100">기초자산</a>
+                <a href="/stats" class="shrink-0 px-3 py-1.5 rounded-lg text-ink-700 hover:bg-ink-100">통계</a>
+            </div>
         </div>
     </div>
 </nav>
 
-<main class="max-w-5xl mx-auto px-4 py-6">
-    <div th:if="${flashMessage}" class="mb-4 px-4 py-2 rounded bg-blue-50 text-blue-800 text-sm" th:text="${flashMessage}"></div>
-    <div th:if="${errorMessage}" class="mb-4 px-4 py-2 rounded bg-red-50 text-red-800 text-sm" th:text="${errorMessage}"></div>
-    <div layout:fragment="content">
-        <!-- page content goes here -->
-    </div>
+<main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div th:if="${flashMessage}"
+         class="mb-4 px-4 py-3 rounded-xl bg-brand-50 text-brand-700 text-sm border border-brand-100"
+         th:text="${flashMessage}"></div>
+    <div th:if="${errorMessage}"
+         class="mb-4 px-4 py-3 rounded-xl bg-rose-50 text-rose-700 text-sm border border-rose-100"
+         th:text="${errorMessage}"></div>
+    <div layout:fragment="content"></div>
 </main>
 
-<footer class="text-center text-xs text-gray-400 py-6">
+<footer class="text-center text-xs text-ink-500 py-8">
     budget-book · <span th:text="${#dates.format(#dates.createNow(), 'yyyy')}">2026</span>
 </footer>
 </body>

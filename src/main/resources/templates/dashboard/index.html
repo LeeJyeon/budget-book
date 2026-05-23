@@ -4,91 +4,167 @@
 <head><title>대시보드 - budget-book</title></head>
 <body>
 <div layout:fragment="content">
-    <div class="flex items-center justify-between mb-4">
-        <h1 class="text-2xl font-bold"
-            th:text="${currentUser != null ? '안녕하세요, ' + currentUser.displayName + '님' : '안녕하세요'}">
-            안녕하세요
-        </h1>
+
+    <!-- Greeting + quick actions -->
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+        <div>
+            <div class="text-xs uppercase tracking-wider text-ink-500">대시보드</div>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight mt-1"
+                th:text="${currentUser != null ? '안녕하세요, ' + currentUser.displayName + '님' : '안녕하세요'}">
+                안녕하세요
+            </h1>
+        </div>
         <div class="flex gap-2">
             <a href="/transactions/new"
-               class="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded px-3 py-2">+ 거래 등록</a>
+               class="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 py-2 shadow-sm transition">
+                <span>＋</span> 거래 등록
+            </a>
             <a href="/recurring"
-               class="bg-gray-100 hover:bg-gray-200 text-sm rounded px-3 py-2">정기 지출 보기</a>
+               class="inline-flex items-center gap-1.5 rounded-xl bg-white border border-ink-100 hover:bg-ink-100 text-ink-700 text-sm px-4 py-2 shadow-sm transition">
+                정기 지출
+            </a>
         </div>
     </div>
 
+    <!-- Total balance hero + month picker -->
+    <section class="bg-white rounded-2xl shadow-card border border-ink-100 p-5 sm:p-6 mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+                <div class="text-xs text-ink-500">총 잔액 (오늘 기준)</div>
+                <div class="text-3xl sm:text-4xl font-bold tracking-tight tabular mt-1"
+                     th:text="${#numbers.formatInteger(totalCurrentBalance, 3, 'COMMA') + ' 원'}">0 원</div>
+            </div>
+
+            <!-- Month picker -->
+            <form method="get" action="/" class="flex items-center gap-2 self-stretch sm:self-auto">
+                <a th:href="@{/(month=${prevMonth})}"
+                   class="grid place-items-center w-9 h-9 rounded-lg bg-ink-100 hover:bg-ink-300/40 text-ink-700"
+                   aria-label="이전 달">‹</a>
+                <input type="month" name="month" th:value="${selectedMonth}"
+                       onchange="this.form.submit()"
+                       class="rounded-lg border border-ink-100 px-3 py-1.5 text-sm tabular bg-white"/>
+                <a th:href="@{/(month=${nextMonth})}"
+                   class="grid place-items-center w-9 h-9 rounded-lg bg-ink-100 hover:bg-ink-300/40 text-ink-700"
+                   aria-label="다음 달">›</a>
+                <a th:if="${!isCurrentMonth}" href="/"
+                   class="text-xs text-brand-600 hover:underline ml-1">이번 달로</a>
+            </form>
+        </div>
+    </section>
+
+    <!-- Selected-month banner -->
+    <div class="flex items-center gap-2 mb-3">
+        <h2 class="text-lg font-semibold tracking-tight">
+            <span th:text="${selectedYm.year} + '년 ' + ${selectedYm.monthValue} + '월'">2026년 5월</span>
+            <span class="text-xs text-ink-500 font-normal" th:if="${isCurrentMonth}">· 이번 달</span>
+        </h2>
+    </div>
+
+    <!-- Section month cards -->
     <section class="grid gap-3 sm:grid-cols-3 mb-6">
-        <div th:each="card : ${balanceCards}" class="bg-white border rounded p-4">
-            <div class="text-xs text-gray-500" th:text="${card.section.label}">공용</div>
-            <div class="text-2xl font-bold mt-1"
-                 th:text="${#numbers.formatInteger(card.currentBalance, 3, 'COMMA') + '원'}">0원</div>
-            <div class="text-xs mt-2"
-                 th:classappend="${card.monthChange >= 0} ? 'text-blue-700' : 'text-red-700'"
-                 th:text="'이번 달: ' + ${(card.monthChange >= 0 ? '+' : '') + #numbers.formatInteger(card.monthChange, 3, 'COMMA') + '원'}">
-                이번 달: +0원
+        <div th:each="card : ${balanceCards}"
+             th:with="theme=${card.section.name() == 'SHARED' ? 'shared' : (card.section.name() == 'HUSBAND' ? 'husband' : 'wife')}"
+             class="bg-white rounded-2xl shadow-card border border-ink-100 p-5">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full"
+                      th:classappend="${card.section.name() == 'SHARED'} ? 'bg-shared-500' :
+                                       (${card.section.name() == 'HUSBAND'} ? 'bg-husband-500' : 'bg-wife-500')"></span>
+                <span class="text-xs uppercase tracking-wider text-ink-500" th:text="${card.section.label}">공용</span>
+            </div>
+            <div class="text-2xl font-bold tracking-tight tabular mt-2"
+                 th:text="${#numbers.formatInteger(card.currentBalance, 3, 'COMMA') + ' 원'}">0 원</div>
+            <div class="text-xs mt-3 tabular"
+                 th:classappend="${card.monthChange >= 0} ? 'text-income-600' : 'text-expense-600'">
+                <span th:text="${selectedYm.monthValue} + '월: '">5월: </span>
+                <span th:text="${(card.monthChange >= 0 ? '+' : '') + #numbers.formatInteger(card.monthChange, 3, 'COMMA') + ' 원'}">+0 원</span>
             </div>
         </div>
     </section>
 
-    <section class="bg-white border rounded p-4 mb-6">
-        <h2 class="text-lg font-semibold mb-3">이번 달 요약</h2>
-        <div class="grid grid-cols-3 gap-3 text-center">
-            <div>
-                <div class="text-xs text-gray-500">총 수입</div>
-                <div class="text-lg font-semibold text-blue-700"
-                     th:text="${#numbers.formatInteger(monthSummary.totalIncome, 3, 'COMMA') + '원'}">0원</div>
+    <!-- Month summary card -->
+    <section class="bg-white rounded-2xl shadow-card border border-ink-100 p-5 sm:p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold tracking-tight">
+                <span th:text="${selectedYm.monthValue} + '월 합계'">5월 합계</span>
+            </h3>
+            <a th:href="@{/stats(from=${monthFrom}, to=${monthTo})}"
+               class="text-xs text-brand-600 hover:underline">통계 자세히 →</a>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+            <div class="rounded-xl bg-income-500/5 p-4">
+                <div class="text-xs text-ink-500">수입</div>
+                <div class="text-xl font-bold text-income-600 tabular mt-1"
+                     th:text="${#numbers.formatInteger(monthSummary.totalIncome, 3, 'COMMA') + ' 원'}">0 원</div>
             </div>
-            <div>
-                <div class="text-xs text-gray-500">총 지출</div>
-                <div class="text-lg font-semibold text-red-700"
-                     th:text="${#numbers.formatInteger(monthSummary.totalExpense, 3, 'COMMA') + '원'}">0원</div>
+            <div class="rounded-xl bg-expense-500/5 p-4">
+                <div class="text-xs text-ink-500">지출</div>
+                <div class="text-xl font-bold text-expense-600 tabular mt-1"
+                     th:text="${#numbers.formatInteger(monthSummary.totalExpense, 3, 'COMMA') + ' 원'}">0 원</div>
             </div>
-            <div>
-                <div class="text-xs text-gray-500">순</div>
-                <div class="text-lg font-semibold"
-                     th:classappend="${monthSummary.net >= 0} ? 'text-blue-700' : 'text-red-700'"
-                     th:text="${(monthSummary.net >= 0 ? '+' : '') + #numbers.formatInteger(monthSummary.net, 3, 'COMMA') + '원'}">
-                    +0원
+            <div class="rounded-xl bg-ink-100/60 p-4">
+                <div class="text-xs text-ink-500">순</div>
+                <div class="text-xl font-bold tabular mt-1"
+                     th:classappend="${monthSummary.net >= 0} ? 'text-income-600' : 'text-expense-600'"
+                     th:text="${(monthSummary.net >= 0 ? '+' : '') + #numbers.formatInteger(monthSummary.net, 3, 'COMMA') + ' 원'}">
+                    +0 원
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="bg-white border rounded">
-        <header class="px-4 py-2 border-b bg-gray-50 flex items-center justify-between">
-            <h2 class="font-semibold text-sm">최근 거래</h2>
-            <a href="/transactions" class="text-xs text-blue-600 hover:underline">전체 보기</a>
+    <!-- Recent transactions -->
+    <section class="bg-white rounded-2xl shadow-card border border-ink-100 overflow-hidden">
+        <header class="flex items-center justify-between px-5 py-3.5 border-b border-ink-100">
+            <h3 class="font-semibold tracking-tight">
+                <span th:text="${selectedYm.monthValue} + '월 거래'">5월 거래</span>
+                <span class="text-xs text-ink-500 font-normal">· 최신 10건</span>
+            </h3>
+            <a th:href="@{/transactions(from=${monthFrom}, to=${monthTo})}"
+               class="text-xs text-brand-600 hover:underline">전체 보기 →</a>
         </header>
-        <div class="p-4">
-            <p th:if="${#lists.isEmpty(recentTransactions)}" class="text-sm text-gray-500">아직 거래가 없어요.</p>
-            <div th:unless="${#lists.isEmpty(recentTransactions)}" class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="text-gray-600">
-                    <tr>
-                        <th class="text-left px-2 py-1.5">일시</th>
-                        <th class="text-left px-2 py-1.5">섹션</th>
-                        <th class="text-left px-2 py-1.5">종류</th>
-                        <th class="text-right px-2 py-1.5">금액</th>
-                        <th class="text-left px-2 py-1.5">메모</th>
-                    </tr>
-                    </thead>
-                    <tbody class="divide-y">
-                    <tr th:each="t : ${recentTransactions}">
-                        <td class="px-2 py-1.5 text-xs text-gray-600"
-                            th:text="${#temporals.format(t.occurredAt, 'yyyy-MM-dd HH:mm')}">2026-05-23 12:00</td>
-                        <td class="px-2 py-1.5" th:text="${t.section.label}">공용</td>
-                        <td class="px-2 py-1.5"
-                            th:classappend="${t.type.name == 'INCOME'} ? 'text-blue-700' : 'text-red-700'"
-                            th:text="${t.type.label}">지출</td>
-                        <td class="px-2 py-1.5 text-right font-medium"
-                            th:text="${#numbers.formatInteger(t.amount, 3, 'COMMA') + '원'}">0원</td>
-                        <td class="px-2 py-1.5 text-gray-700" th:text="${t.memo}">메모</td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
+
+        <div th:if="${#lists.isEmpty(recentTransactions)}" class="px-5 py-10 text-center text-sm text-ink-500">
+            이번 달에는 등록된 거래가 없어요.
+        </div>
+
+        <div th:unless="${#lists.isEmpty(recentTransactions)}" class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-xs text-ink-500 bg-ink-50">
+                <tr>
+                    <th class="text-left font-medium px-5 py-2.5">일시</th>
+                    <th class="text-left font-medium px-3 py-2.5">섹션</th>
+                    <th class="text-left font-medium px-3 py-2.5">종류</th>
+                    <th class="text-right font-medium px-3 py-2.5">금액</th>
+                    <th class="text-left font-medium px-5 py-2.5">메모</th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-ink-100">
+                <tr th:each="t : ${recentTransactions}" class="hover:bg-ink-50/60 transition">
+                    <td class="px-5 py-2.5 text-xs text-ink-700 tabular"
+                        th:text="${#temporals.format(t.occurredAt, 'MM/dd HH:mm')}">05/23 12:00</td>
+                    <td class="px-3 py-2.5">
+                        <span class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full"
+                              th:classappend="${t.section.name() == 'SHARED'} ? 'bg-shared-50 text-shared-600' :
+                                               (${t.section.name() == 'HUSBAND'} ? 'bg-husband-50 text-husband-600' : 'bg-wife-50 text-wife-600')">
+                            <span class="w-1.5 h-1.5 rounded-full"
+                                  th:classappend="${t.section.name() == 'SHARED'} ? 'bg-shared-500' :
+                                                   (${t.section.name() == 'HUSBAND'} ? 'bg-husband-500' : 'bg-wife-500')"></span>
+                            <span th:text="${t.section.label}">공용</span>
+                        </span>
+                    </td>
+                    <td class="px-3 py-2.5 text-xs"
+                        th:classappend="${t.type.name == 'INCOME'} ? 'text-income-600' : 'text-expense-600'"
+                        th:text="${t.type.label}">지출</td>
+                    <td class="px-3 py-2.5 text-right font-semibold tabular"
+                        th:classappend="${t.type.name == 'INCOME'} ? 'text-income-600' : 'text-expense-600'"
+                        th:text="${(t.type.name == 'INCOME' ? '+' : '-') + #numbers.formatInteger(t.amount, 3, 'COMMA')}">0</td>
+                    <td class="px-5 py-2.5 text-ink-700 truncate max-w-xs" th:text="${t.memo}">메모</td>
+                </tr>
+                </tbody>
+            </table>
         </div>
     </section>
+
 </div>
 </body>
 </html>
