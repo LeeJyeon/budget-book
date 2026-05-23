@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>태그 - budget-book</title></head>
+<body>
+<div layout:fragment="content">
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold">태그 관리</h1>
+    </div>
+
+    <section class="bg-white border rounded p-4 mb-6">
+        <h2 class="text-lg font-semibold mb-3">새 태그 추가</h2>
+        <form th:action="@{/tags}" method="post" th:object="${form}"
+              class="flex flex-col sm:flex-row gap-2 sm:items-end">
+            <div class="flex-1">
+                <label class="block text-xs text-gray-600 mb-1">이름</label>
+                <input type="text" th:field="*{name}" maxlength="60" required
+                       class="w-full border rounded px-2 py-1.5 text-sm"
+                       placeholder="예: 식비"/>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">색상</label>
+                <input type="color" th:field="*{color}"
+                       class="h-9 w-16 border rounded cursor-pointer"/>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">종류</label>
+                <select th:field="*{type}" required
+                        class="border rounded px-2 py-1.5 text-sm">
+                    <option value="" disabled th:selected="${form.type == null}">선택</option>
+                    <option th:each="tt : ${tagTypes}"
+                            th:value="${tt}" th:text="${tt.label}"></option>
+                </select>
+            </div>
+            <button type="submit"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded px-4 py-2">
+                추가
+            </button>
+        </form>
+    </section>
+
+    <div class="space-y-6">
+        <section th:each="entry : ${grouped}" class="bg-white border rounded">
+            <header class="px-4 py-2 border-b bg-gray-50 flex items-center justify-between">
+                <h2 class="font-semibold text-sm"
+                    th:text="${entry.key.label} + ' 태그 (' + ${#lists.size(entry.value)} + ')'">수입 태그</h2>
+            </header>
+            <div class="p-4">
+                <p th:if="${#lists.isEmpty(entry.value)}" class="text-sm text-gray-500">아직 태그가 없어요.</p>
+                <ul th:unless="${#lists.isEmpty(entry.value)}" class="divide-y">
+                    <li th:each="tag : ${entry.value}" class="py-2">
+                        <form th:action="@{'/tags/' + ${tag.id}}" method="post"
+                              class="flex flex-col sm:flex-row gap-2 sm:items-center">
+                            <div class="flex items-center gap-2 flex-1">
+                                <span class="inline-block w-4 h-4 rounded-full border"
+                                      th:style="'background-color:' + ${tag.color}"></span>
+                                <input type="text" name="name" th:value="${tag.name}" maxlength="60" required
+                                       class="border rounded px-2 py-1 text-sm flex-1 min-w-0"/>
+                            </div>
+                            <input type="color" name="color" th:value="${tag.color}"
+                                   class="h-8 w-14 border rounded cursor-pointer"/>
+                            <select name="type" required class="border rounded px-2 py-1 text-sm">
+                                <option th:each="tt : ${tagTypes}"
+                                        th:value="${tt}" th:text="${tt.label}"
+                                        th:selected="${tt == tag.type}"></option>
+                            </select>
+                            <div class="flex gap-2">
+                                <button type="submit"
+                                        class="bg-gray-100 hover:bg-gray-200 text-sm rounded px-3 py-1.5">
+                                    저장
+                                </button>
+                            </div>
+                        </form>
+                        <form th:action="@{'/tags/' + ${tag.id} + '/delete'}" method="post"
+                              class="mt-1 text-right"
+                              onsubmit="return confirm('이 태그를 삭제할까요?');">
+                            <button type="submit"
+                                    class="text-xs text-red-600 hover:underline">삭제
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </section>
+    </div>
+</div>
+</body>
+</html>

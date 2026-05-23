@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:content="${_csrf?.token}">
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}">
+    <title th:text="${pageTitle ?: 'budget-book'}">budget-book</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script>
+      // CSRF for HTMX
+      document.addEventListener('htmx:configRequest', (evt) => {
+        const token = document.querySelector('meta[name="_csrf"]')?.content;
+        const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+        if (token && header) evt.detail.headers[header] = token;
+      });
+    </script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+<nav class="bg-white border-b">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+        <a href="/" class="text-lg font-bold">💰 budget-book</a>
+        <div class="hidden sm:flex gap-4 text-sm">
+            <a href="/" class="hover:underline">대시보드</a>
+            <a href="/transactions" class="hover:underline">거래</a>
+            <a href="/recurring" class="hover:underline">정기 지출</a>
+            <a href="/tags" class="hover:underline">태그</a>
+            <a href="/balances" class="hover:underline">기초자산</a>
+            <a href="/stats" class="hover:underline">통계</a>
+        </div>
+        <div class="text-xs text-gray-600" th:if="${currentUser}">
+            <span th:text="${currentUser.displayName}">user</span>
+            <form th:action="@{/logout}" method="post" class="inline ml-2">
+                <button class="text-blue-600 hover:underline" type="submit">로그아웃</button>
+            </form>
+        </div>
+    </div>
+    <div class="sm:hidden border-t">
+        <div class="max-w-5xl mx-auto px-4 py-2 flex gap-3 text-xs overflow-x-auto">
+            <a href="/" class="hover:underline">대시보드</a>
+            <a href="/transactions" class="hover:underline">거래</a>
+            <a href="/recurring" class="hover:underline">정기</a>
+            <a href="/tags" class="hover:underline">태그</a>
+            <a href="/balances" class="hover:underline">기초자산</a>
+            <a href="/stats" class="hover:underline">통계</a>
+        </div>
+    </div>
+</nav>
+
+<main class="max-w-5xl mx-auto px-4 py-6">
+    <div th:if="${flashMessage}" class="mb-4 px-4 py-2 rounded bg-blue-50 text-blue-800 text-sm" th:text="${flashMessage}"></div>
+    <div th:if="${errorMessage}" class="mb-4 px-4 py-2 rounded bg-red-50 text-red-800 text-sm" th:text="${errorMessage}"></div>
+    <div layout:fragment="content">
+        <!-- page content goes here -->
+    </div>
+</main>
+
+<footer class="text-center text-xs text-gray-400 py-6">
+    budget-book · <span th:text="${#dates.format(#dates.createNow(), 'yyyy')}">2026</span>
+</footer>
+</body>
+</html>

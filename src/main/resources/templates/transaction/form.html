@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head>
+    <title th:text="${mode == 'edit' ? '거래 수정' : '거래 추가'} + ' - budget-book'">거래 추가 - budget-book</title>
+</head>
+<body>
+<div layout:fragment="content">
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold"
+            th:text="${mode == 'edit' ? '거래 수정' : '거래 추가'}">거래 추가</h1>
+        <a th:href="@{/transactions}" class="text-sm text-gray-600 hover:underline">목록으로</a>
+    </div>
+
+    <div th:if="${errorMessage}" class="mb-4 px-4 py-2 rounded bg-red-50 text-red-800 text-sm"
+         th:text="${errorMessage}"></div>
+
+    <section class="bg-white border rounded p-4">
+        <form th:action="${mode == 'edit'} ? @{'/transactions/' + ${editingId}} : @{/transactions}"
+              method="post" th:object="${form}"
+              class="space-y-4">
+
+            <div>
+                <label class="block text-sm font-medium mb-1">섹션 <span class="text-red-500">*</span></label>
+                <div class="flex flex-wrap gap-3 text-sm">
+                    <label th:each="s : ${sections}" class="inline-flex items-center gap-1">
+                        <input type="radio" th:field="*{section}" th:value="${s}" required/>
+                        <span th:text="${s.label}">공용</span>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">종류 <span class="text-red-500">*</span></label>
+                <div class="flex gap-3 text-sm">
+                    <label th:each="t : ${txTypes}" class="inline-flex items-center gap-1">
+                        <input type="radio" th:field="*{type}" th:value="${t}" required/>
+                        <span th:text="${t.label}">수입</span>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">금액(원) <span class="text-red-500">*</span></label>
+                <input type="number" th:field="*{amount}" min="1" step="1" required
+                       class="w-full sm:w-60 border rounded px-2 py-1.5 text-sm font-mono"
+                       placeholder="예: 9500"/>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">발생 일시 <span class="text-red-500">*</span></label>
+                <input type="datetime-local" th:field="*{occurredAt}" required
+                       class="border rounded px-2 py-1.5 text-sm"/>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">태그</label>
+                <select multiple th:field="*{tagIds}" size="6"
+                        class="w-full sm:w-96 border rounded px-2 py-1.5 text-sm">
+                    <option th:each="tag : ${allTags}"
+                            th:value="${tag.id}"
+                            th:text="${tag.name + ' (' + tag.type.label + ')'}"></option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Ctrl/Cmd 클릭으로 여러 개 선택</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">메모</label>
+                <textarea th:field="*{memo}" rows="3" maxlength="500"
+                          class="w-full border rounded px-2 py-1.5 text-sm"
+                          placeholder="메모 (선택)"></textarea>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded px-4 py-2"
+                        th:text="${mode == 'edit' ? '수정' : '저장'}">저장</button>
+                <a th:href="@{/transactions}"
+                   class="bg-gray-100 hover:bg-gray-200 text-sm rounded px-4 py-2">취소</a>
+            </div>
+        </form>
+
+        <form th:if="${mode == 'edit'}"
+              th:action="@{'/transactions/' + ${editingId} + '/delete'}" method="post"
+              class="mt-6 text-right"
+              onsubmit="return confirm('삭제할까요?');">
+            <button type="submit" class="text-xs text-red-600 hover:underline">이 거래 삭제</button>
+        </form>
+    </section>
+</div>
+</body>
+</html>

@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:budget;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  flyway:
+    url: jdbc:h2:mem:budget;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    user: sa
+    password:
+
+app:
+  dev-auth:
+    enabled: true
+    email: husband@example.com
+    display-name: 남편(dev)
+    role: HUSBAND
+  whitelist:
+    - husband@example.com
+    - wife@example.com

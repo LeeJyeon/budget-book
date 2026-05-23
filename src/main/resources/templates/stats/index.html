@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>통계 - budget-book</title></head>
+<body>
+<div layout:fragment="content">
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold">통계</h1>
+    </div>
+
+    <section class="bg-white border rounded p-4 mb-6">
+        <form th:action="@{/stats}" method="get" class="flex flex-col sm:flex-row gap-2 sm:items-end">
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">시작일</label>
+                <input type="date" name="from" th:value="${#temporals.format(from, 'yyyy-MM-dd')}"
+                       class="border rounded px-2 py-1.5 text-sm"/>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">종료일</label>
+                <input type="date" name="to" th:value="${#temporals.format(to, 'yyyy-MM-dd')}"
+                       class="border rounded px-2 py-1.5 text-sm"/>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">섹션 (일별 추이)</label>
+                <select name="section" class="border rounded px-2 py-1.5 text-sm">
+                    <option th:each="s : ${sections}"
+                            th:value="${s.name()}" th:text="${s.label}"
+                            th:selected="${s == section}"></option>
+                </select>
+            </div>
+            <button type="submit"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded px-4 py-2">
+                조회
+            </button>
+        </form>
+    </section>
+
+    <section class="bg-white border rounded p-4 mb-6">
+        <h2 class="text-lg font-semibold mb-3">섹션별 수입 / 지출</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 text-gray-600">
+                <tr>
+                    <th class="text-left px-3 py-2">섹션</th>
+                    <th class="text-right px-3 py-2">수입</th>
+                    <th class="text-right px-3 py-2">지출</th>
+                    <th class="text-right px-3 py-2">순</th>
+                </tr>
+                </thead>
+                <tbody class="divide-y">
+                <tr th:each="row : ${summary.perSection}">
+                    <td class="px-3 py-2" th:text="${row.section.label}">공용</td>
+                    <td class="text-right px-3 py-2 text-blue-700"
+                        th:text="${#numbers.formatInteger(row.income, 3, 'COMMA') + '원'}">0원</td>
+                    <td class="text-right px-3 py-2 text-red-700"
+                        th:text="${#numbers.formatInteger(row.expense, 3, 'COMMA') + '원'}">0원</td>
+                    <td class="text-right px-3 py-2 font-medium"
+                        th:text="${#numbers.formatInteger(row.net, 3, 'COMMA') + '원'}">0원</td>
+                </tr>
+                </tbody>
+                <tfoot class="bg-gray-50 font-semibold">
+                <tr>
+                    <td class="px-3 py-2">합계</td>
+                    <td class="text-right px-3 py-2 text-blue-700"
+                        th:text="${#numbers.formatInteger(summary.totalIncome, 3, 'COMMA') + '원'}">0원</td>
+                    <td class="text-right px-3 py-2 text-red-700"
+                        th:text="${#numbers.formatInteger(summary.totalExpense, 3, 'COMMA') + '원'}">0원</td>
+                    <td class="text-right px-3 py-2"
+                        th:text="${#numbers.formatInteger(summary.net, 3, 'COMMA') + '원'}">0원</td>
+                </tr>
+                </tfoot>
+            </table>
+        </div>
+    </section>
+
+    <div class="grid gap-4 lg:grid-cols-2 mb-6">
+        <section class="bg-white border rounded p-4">
+            <h2 class="text-lg font-semibold mb-3">태그별 지출 TOP 10</h2>
+            <p th:if="${#lists.isEmpty(tagBreakdown)}" class="text-sm text-gray-500">데이터가 없어요.</p>
+            <canvas id="tagChart" th:unless="${#lists.isEmpty(tagBreakdown)}" height="220"></canvas>
+        </section>
+
+        <section class="bg-white border rounded p-4">
+            <h2 class="text-lg font-semibold mb-3">월별 추이 (최근 6개월)</h2>
+            <canvas id="monthlyChart" height="220"></canvas>
+        </section>
+    </div>
+
+    <section class="bg-white border rounded p-4 mb-6">
+        <h2 class="text-lg font-semibold mb-3"
+            th:text="${section.label} + ' 섹션 일별 누적 잔액 추이'">공용 섹션 일별 추이</h2>
+        <canvas id="dailyChart" height="220"></canvas>
+    </section>
+
+    <script th:inline="javascript">
+      /*<![CDATA[*/
+      const tagLabels = /*[[${tagLabels}]]*/ [];
+      const tagValues = /*[[${tagValues}]]*/ [];
+      const tagColors = /*[[${tagColors}]]*/ [];
+      const monthlyLabels = /*[[${monthlyLabels}]]*/ [];
+      const monthlyIncome = /*[[${monthlyIncome}]]*/ [];
+      const monthlyExpense = /*[[${monthlyExpense}]]*/ [];
+      const dailyLabels = /*[[${dailyLabels}]]*/ [];
+      const dailyValues = /*[[${dailyValues}]]*/ [];
+
+      if (tagLabels.length > 0 && document.getElementById('tagChart')) {
+        new Chart(document.getElementById('tagChart'), {
+          type: 'bar',
+          data: {
+            labels: tagLabels,
+            datasets: [{
+              label: '지출 (원)',
+              data: tagValues,
+              backgroundColor: tagColors.length ? tagColors : '#60A5FA',
+            }],
+          },
+          options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } },
+        });
+      }
+
+      if (document.getElementById('monthlyChart')) {
+        new Chart(document.getElementById('monthlyChart'), {
+          type: 'line',
+          data: {
+            labels: monthlyLabels,
+            datasets: [
+              { label: '수입', data: monthlyIncome, borderColor: '#2563EB', backgroundColor: 'rgba(37,99,235,0.15)', tension: 0.2 },
+              { label: '지출', data: monthlyExpense, borderColor: '#DC2626', backgroundColor: 'rgba(220,38,38,0.15)', tension: 0.2 },
+            ],
+          },
+          options: { responsive: true },
+        });
+      }
+
+      if (document.getElementById('dailyChart')) {
+        new Chart(document.getElementById('dailyChart'), {
+          type: 'line',
+          data: {
+            labels: dailyLabels,
+            datasets: [{
+              label: '누적 잔액 변동',
+              data: dailyValues,
+              borderColor: '#059669',
+              backgroundColor: 'rgba(5,150,105,0.15)',
+              tension: 0.2,
+              fill: true,
+            }],
+          },
+          options: { responsive: true },
+        });
+      }
+      /*]]>*/
+    </script>
+</div>
+</body>
+</html>

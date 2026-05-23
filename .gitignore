@@ -1,72 +1,49 @@
-# ────────────────────────────────────────────
-# OS
-# ────────────────────────────────────────────
-.DS_Store
-.AppleDouble
-.LSOverride
-Thumbs.db
-
-# ────────────────────────────────────────────
-# IDE — IntelliJ IDEA / JetBrains
-# ────────────────────────────────────────────
-.idea/
-*.iml
-*.iws
-*.ipr
-out/
-
-# ────────────────────────────────────────────
-# IDE — VSCode
-# ────────────────────────────────────────────
-.vscode/
-*.code-workspace
-
-# ────────────────────────────────────────────
-# IDE — Eclipse
-# ────────────────────────────────────────────
-.project
-.classpath
-.settings/
-bin/
-
-# ────────────────────────────────────────────
-# Gradle (Spring Boot + Kotlin DSL)
-# ────────────────────────────────────────────
-.gradle/
+HELP.md
+.gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-# ────────────────────────────────────────────
-# Maven (혹시 사용 시)
-# ────────────────────────────────────────────
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
 
-# ────────────────────────────────────────────
-# Java / Kotlin 컴파일 산출물
-# ────────────────────────────────────────────
-*.class
-*.jar
-*.war
-*.ear
-*.nar
-hs_err_pid*
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
 
-# ────────────────────────────────────────────
-# 로그
-# ────────────────────────────────────────────
-*.log
-logs/
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
 
-# ────────────────────────────────────────────
-# 환경 변수 / 시크릿 (절대 커밋 금지)
-# ────────────────────────────────────────────
+### VS Code ###
+.vscode/
+
+### Kotlin ###
+.kotlin
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Secrets ###
 .env
 .env.*
 !.env.example
@@ -76,17 +53,12 @@ secrets/
 application-secret*.yml
 application-secret*.properties
 
-# ────────────────────────────────────────────
-# Claude Code — 개인 로컬 설정
-# (공유 설정 .claude/settings.json 은 커밋 OK)
-# ────────────────────────────────────────────
+### Claude Code (개인 로컬 설정) ###
 .claude/settings.local.json
 
-# ────────────────────────────────────────────
-# 기타
-# ────────────────────────────────────────────
+### Misc ###
+*.log
+logs/
 *.tmp
 *.bak
 *.swp
-.cache/
-node_modules/

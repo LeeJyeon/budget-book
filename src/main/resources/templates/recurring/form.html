@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>정기 항목 - budget-book</title></head>
+<body>
+<div layout:fragment="content">
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold" th:text="${editId != null} ? '정기 항목 수정' : '정기 항목 추가'">정기 항목 추가</h1>
+        <a th:href="@{/recurring}" class="text-sm text-gray-600 hover:underline">← 목록으로</a>
+    </div>
+
+    <div th:if="${errorMessage}" class="mb-4 px-4 py-2 rounded bg-red-50 text-red-800 text-sm" th:text="${errorMessage}"></div>
+
+    <form th:action="${editId != null} ? @{/recurring/{id}(id=${editId})} : @{/recurring}"
+          method="post" th:object="${form}"
+          class="bg-white border rounded p-4 space-y-4">
+
+        <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">이름</label>
+            <input type="text" th:field="*{name}" maxlength="100" required
+                   class="w-full border rounded px-3 py-2 text-sm"
+                   placeholder="예: 넷플릭스"/>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">섹션</label>
+                <select th:field="*{section}" required class="w-full border rounded px-3 py-2 text-sm">
+                    <option value="" disabled th:selected="${form.section == null}">선택</option>
+                    <option th:each="s : ${sections}" th:value="${s}" th:text="${s.label}"></option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">종류</label>
+                <div class="flex gap-4 mt-1.5">
+                    <label th:each="t : ${txTypes}" class="inline-flex items-center gap-1 text-sm">
+                        <input type="radio" th:field="*{type}" th:value="${t}"/>
+                        <span th:text="${t.label}">지출</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">예상 금액 (원)</label>
+                <input type="number" th:field="*{amount}" min="1" required
+                       class="w-full border rounded px-3 py-2 text-sm"
+                       placeholder="예: 9500"/>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">매월 발생일</label>
+                <input type="number" th:field="*{dayOfMonth}" min="1" max="31"
+                       class="w-full border rounded px-3 py-2 text-sm"
+                       placeholder="1~31 사이"/>
+                <p class="text-xs text-gray-500 mt-1">비워두면 매월 발생일 미정</p>
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">메모</label>
+            <textarea th:field="*{memo}" rows="2" maxlength="500"
+                      class="w-full border rounded px-3 py-2 text-sm"
+                      placeholder="선택 사항"></textarea>
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">참고 태그</label>
+            <select th:field="*{tagIds}" multiple
+                    class="w-full border rounded px-3 py-2 text-sm h-32">
+                <option th:each="tag : ${allTags}"
+                        th:value="${tag.id}"
+                        th:text="${tag.name + ' (' + tag.type.label + ')'}"></option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Cmd/Ctrl 클릭으로 여러 개 선택</p>
+        </div>
+
+        <div>
+            <label class="inline-flex items-center gap-2 text-sm">
+                <input type="checkbox" th:field="*{active}"/>
+                <span>활성</span>
+            </label>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t">
+            <a th:href="@{/recurring}" class="text-sm text-gray-600 hover:underline">취소</a>
+            <button type="submit"
+                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded px-4 py-2">
+                저장
+            </button>
+        </div>
+    </form>
+
+    <form th:if="${editId != null}"
+          th:action="@{/recurring/{id}/delete(id=${editId})}" method="post"
+          class="mt-4 text-right"
+          onsubmit="return confirm('삭제할까요?')">
+        <button type="submit" class="text-sm text-red-600 hover:underline">이 항목 삭제</button>
+    </form>
+</div>
+</body>
+</html>

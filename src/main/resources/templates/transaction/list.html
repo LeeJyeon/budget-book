@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>거래 - budget-book</title></head>
+<body>
+<div layout:fragment="content">
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold">거래</h1>
+        <a th:href="@{/transactions/new}"
+           class="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded px-4 py-2">+ 거래 추가</a>
+    </div>
+
+    <section class="bg-white border rounded p-4 mb-4">
+        <form method="get" th:action="@{/transactions}" class="grid grid-cols-2 sm:grid-cols-6 gap-2 items-end text-sm">
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">시작일</label>
+                <input type="date" name="from" th:value="${queryFrom}"
+                       class="w-full border rounded px-2 py-1.5"/>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">종료일</label>
+                <input type="date" name="to" th:value="${queryTo}"
+                       class="w-full border rounded px-2 py-1.5"/>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">섹션</label>
+                <select name="section" class="w-full border rounded px-2 py-1.5">
+                    <option value="" th:selected="${filter.section == null}">전체</option>
+                    <option th:each="s : ${sections}"
+                            th:value="${s}" th:text="${s.label}"
+                            th:selected="${filter.section == s}"></option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">종류</label>
+                <select name="type" class="w-full border rounded px-2 py-1.5">
+                    <option value="" th:selected="${filter.type == null}">전체</option>
+                    <option th:each="t : ${txTypes}"
+                            th:value="${t}" th:text="${t.label}"
+                            th:selected="${filter.type == t}"></option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">태그</label>
+                <select name="tagId" class="w-full border rounded px-2 py-1.5">
+                    <option value="" th:selected="${filter.tagId == null}">전체</option>
+                    <option th:each="tag : ${allTags}"
+                            th:value="${tag.id}" th:text="${tag.name}"
+                            th:selected="${filter.tagId != null and filter.tagId == tag.id}"></option>
+                </select>
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+                <label class="block text-xs text-gray-600 mb-1">메모 검색</label>
+                <input type="text" name="q" th:value="${queryQ}" placeholder="키워드"
+                       class="w-full border rounded px-2 py-1.5"/>
+            </div>
+            <div class="col-span-2 sm:col-span-6 flex gap-2 mt-1">
+                <button type="submit"
+                        class="bg-gray-800 hover:bg-gray-900 text-white text-xs rounded px-3 py-1.5">필터 적용</button>
+                <a th:href="@{/transactions}"
+                   class="bg-gray-100 hover:bg-gray-200 text-xs rounded px-3 py-1.5">초기화</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="bg-white border rounded">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                    <th class="px-3 py-2 text-left">발생일시</th>
+                    <th class="px-3 py-2 text-left">섹션</th>
+                    <th class="px-3 py-2 text-left">종류</th>
+                    <th class="px-3 py-2 text-right">금액</th>
+                    <th class="px-3 py-2 text-left">태그</th>
+                    <th class="px-3 py-2 text-left">메모</th>
+                    <th class="px-3 py-2"></th>
+                </tr>
+                </thead>
+                <tbody class="divide-y">
+                <tr th:if="${#lists.isEmpty(transactions)}">
+                    <td colspan="7" class="px-3 py-6 text-center text-gray-500">조건에 맞는 거래가 없어요.</td>
+                </tr>
+                <tr th:each="tx : ${transactions}">
+                    <td class="px-3 py-2 whitespace-nowrap"
+                        th:text="${#temporals.format(tx.occurredAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 09:00</td>
+                    <td class="px-3 py-2">
+                        <span class="inline-block text-xs px-2 py-0.5 rounded-full border bg-gray-50"
+                              th:text="${tx.section.label}">공용</span>
+                    </td>
+                    <td class="px-3 py-2">
+                        <span th:if="${tx.type.name() == 'INCOME'}" class="text-green-600 font-semibold">+ 수입</span>
+                        <span th:if="${tx.type.name() == 'EXPENSE'}" class="text-red-600 font-semibold">− 지출</span>
+                    </td>
+                    <td class="px-3 py-2 text-right whitespace-nowrap font-mono"
+                        th:text="${#numbers.formatInteger(tx.amount, 3, 'COMMA') + '원'}">0원</td>
+                    <td class="px-3 py-2">
+                        <span th:each="tag : ${tx.tags}"
+                              class="inline-block text-xs px-2 py-0.5 rounded mr-1 mb-1 border"
+                              th:style="'color:' + ${tag.color} + ';border-color:' + ${tag.color}"
+                              th:text="${tag.name}">태그</span>
+                    </td>
+                    <td class="px-3 py-2 text-gray-700" th:text="${tx.memo}">메모</td>
+                    <td class="px-3 py-2 text-right whitespace-nowrap">
+                        <a th:href="@{'/transactions/' + ${tx.id}}"
+                           class="text-xs text-blue-600 hover:underline mr-2">수정</a>
+                        <form th:action="@{'/transactions/' + ${tx.id} + '/delete'}" method="post" class="inline"
+                              onsubmit="return confirm('삭제할까요?');">
+                            <button type="submit" class="text-xs text-red-600 hover:underline">삭제</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div th:if="${page.totalElements > pageSize}"
+             class="flex items-center justify-between px-3 py-2 border-t bg-gray-50 text-xs">
+            <span th:text="'총 ' + ${page.totalElements} + '건 · ' + (${page.number} + 1) + ' / ' + ${page.totalPages} + ' 페이지'">총</span>
+            <div class="flex gap-2">
+                <a th:if="${page.hasPrevious()}"
+                   th:href="@{/transactions(from=${queryFrom}, to=${queryTo}, section=${filter.section}, type=${filter.type}, tagId=${filter.tagId}, q=${queryQ}, page=${page.number - 1}, size=${pageSize})}"
+                   class="px-2 py-1 bg-white border rounded hover:bg-gray-100">이전</a>
+                <a th:if="${page.hasNext()}"
+                   th:href="@{/transactions(from=${queryFrom}, to=${queryTo}, section=${filter.section}, type=${filter.type}, tagId=${filter.tagId}, q=${queryQ}, page=${page.number + 1}, size=${pageSize})}"
+                   class="px-2 py-1 bg-white border rounded hover:bg-gray-100">다음</a>
+            </div>
+        </div>
+    </section>
+</div>
+</body>
+</html>

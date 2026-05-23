@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>기초 자산 - budget-book</title></head>
+<body>
+<div layout:fragment="content">
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold">기초 자산</h1>
+        <span class="text-sm text-gray-500">현재 잔액 = 기초 자산 + 수입 합계 − 지출 합계 (기준일 이후)</span>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <section th:each="b : ${balances}" class="bg-white border rounded p-4">
+            <header class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold" th:text="${b.section.label}">공용</h2>
+                <span class="text-xs text-gray-500"
+                      th:text="'기준일: ' + ${#temporals.format(b.asOfDate, 'yyyy-MM-dd')}">기준일: 2026-01-01</span>
+            </header>
+
+            <dl class="text-sm space-y-1.5 mb-4">
+                <div class="flex justify-between">
+                    <dt class="text-gray-600">기초 자산</dt>
+                    <dd class="font-medium"
+                        th:text="${#numbers.formatInteger(b.initialAmount, 3, 'COMMA') + '원'}">0원</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-gray-600">수입 합계</dt>
+                    <dd class="text-blue-700"
+                        th:text="'+' + ${#numbers.formatInteger(b.incomeSince, 3, 'COMMA') + '원'}">+0원</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-gray-600">지출 합계</dt>
+                    <dd class="text-red-700"
+                        th:text="'-' + ${#numbers.formatInteger(b.expenseSince, 3, 'COMMA') + '원'}">-0원</dd>
+                </div>
+                <div class="flex justify-between border-t pt-1.5">
+                    <dt class="text-gray-700 font-semibold">순 변동</dt>
+                    <dd th:classappend="${b.netChange >= 0} ? 'text-blue-700' : 'text-red-700'"
+                        th:text="${(b.netChange >= 0 ? '+' : '') + #numbers.formatInteger(b.netChange, 3, 'COMMA') + '원'}">
+                        +0원
+                    </dd>
+                </div>
+                <div class="flex justify-between border-t pt-1.5">
+                    <dt class="text-gray-900 font-bold">현재 잔액</dt>
+                    <dd class="text-lg font-bold"
+                        th:text="${#numbers.formatInteger(b.currentBalance, 3, 'COMMA') + '원'}">0원</dd>
+                </div>
+            </dl>
+
+            <form th:action="@{'/balances/' + ${b.section.name()}}" method="post"
+                  class="border-t pt-3 space-y-2">
+                <div>
+                    <label class="block text-xs text-gray-600 mb-1">새 기초 자산 (원)</label>
+                    <input type="number" name="amount" min="0" step="1" required
+                           th:value="${b.initialAmount}"
+                           class="w-full border rounded px-2 py-1.5 text-sm"/>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-600 mb-1">기준일</label>
+                    <input type="date" name="asOfDate" required
+                           th:value="${#temporals.format(b.asOfDate, 'yyyy-MM-dd')}"
+                           class="w-full border rounded px-2 py-1.5 text-sm"/>
+                </div>
+                <button type="submit"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm rounded px-4 py-2">
+                    저장
+                </button>
+            </form>
+        </section>
+    </div>
+</div>
+</body>
+</html>
