@@ -1,8 +1,24 @@
 # 가계부 (budget-book) 설계 문서
 
-> **버전**: v0.1 (2026-05-23)
-> **상태**: 초안 — Phase 1 시작 전 합의용
+> **버전**: v0.2 (2026-05-23)
+> **상태**: Phase 1 완료, Phase 2 진행 중 (자산 추이 + 차트 다양화)
 > **소유자**: 부부 2인 (남편 / 아내)
+
+---
+
+## 0. v0.2 변경 요약
+
+레퍼런스 디자인 [`docs/index.html`](index.html) 과의 갭 분석 후 보강:
+
+| 영역 | v0.1 | v0.2 추가 |
+|---|---|---|
+| 자산 추적 | 기초자산 1회 + 누적 잔액 | **`asset_snapshots`** — 월별 총자산/부채 수동 입력 |
+| 자산 변동 가시화 | 없음 | **자산 추이 line chart** — 거래기반 추정 + 수동 스냅샷 블렌딩 |
+| 통계 차트 | bar / line 2종 | **donut(태그) + stacked bar(월별 수입·지출) + line(자산 추이) + line(일별 누적)** |
+| 대시보드 | 단월 카드 + 최근 거래 | **순자산(net worth) hero + 12개월 자산 추이 + 저축률** |
+| 자산 페이지 | `/balances` (기초자산만) | `/balances` + **`/assets`** (스냅샷 입력 + 도넛 + 트렌드) |
+
+v0.2 비-목표 (out of scope): 거래 종류 fixed/variable 분리, 결제수단 마스터, 목표 자산 게이지. 충분히 정착되면 v0.3에서 검토.
 
 ---
 
@@ -63,17 +79,28 @@
 - 고정 3개: `SHARED`(공용) / `HUSBAND`(남편) / `WIFE`(아내)
 - 모든 거래는 정확히 한 섹션에 속함
 
-### 3.5 자산 (Balance)
-- 섹션별 **기초 자산** 1회 입력 (이후 수정 가능)
-- **현재 잔액** = 기초 자산 + Σ(INCOME) − Σ(EXPENSE), 같은 섹션 · `occurred_at >= as_of_date`
-- 일별/월별 자산 추이 그래프
+### 3.5 자산 (Balance + Asset Snapshot)
+- **섹션별 기초 자산** (`initial_balances`) — 최초 1회 입력. 잔액 계산의 출발점
+- **현재 섹션 잔액** = 기초 자산 + Σ(INCOME) − Σ(EXPENSE) 같은 섹션 · `occurred_at >= as_of_date`
+- **월별 자산 스냅샷** (`asset_snapshots`, v0.2) — `(year_month)`를 PK로 `total_assets`, `debt`, `memo`를 수동 입력
+  - 투자/부동산처럼 거래 외 가치 변동을 가계부로 캡처
+  - **순자산(net worth)** = total_assets − debt
+  - 누락된 달은 직전 스냅샷 + 그 달까지의 거래 누적으로 보간 (computed)
+- **자산 추이** (line chart, v0.2): 최근 12개월 순자산 변화
+  - 우선 수동 스냅샷, 비어 있으면 거래 기반 추정값으로 폴백
 
 ### 3.6 통계 (Statistics)
-- 기간 필터 (월별 기본, 임의 기간 지정 가능)
-- 섹션별 수입/지출 합계
-- 태그별 지출 TOP N (파이/막대)
-- 월별 추이 (선 그래프)
-- 자산 추이 (선 그래프)
+v0.2 차트 매핑 — 각 시각화를 가장 잘 표현하는 차트 타입으로:
+
+| 시각화 | 차트 | 사용처 |
+|---|---|---|
+| 태그별 지출 비중 | **Donut** (Chart.js doughnut) | 카테고리 비중 — 합계 대비 비율 |
+| 월별 수입 vs 지출 (6개월) | **Grouped Bar** | 두 시리즈 비교 |
+| 월별 자산(순자산) 추이 (12개월) | **Line** | 시간 흐름 |
+| 일별 누적 잔액 (당월) | **Line** | 일 단위 흐름 |
+| 섹션별 수입/지출 합계 | **Table** + 색 막대 | 작은 N (3 섹션) — 차트보다 표가 효율적 |
+
+기간 필터: 기본 = 당월. URL 쿼리 `?from=YYYY-MM-DD&to=YYYY-MM-DD`.
 
 ### 3.7 접근성
 - PC 브라우저: 데스크탑 레이아웃
@@ -224,6 +251,15 @@ initial_balances
   amount             BIGINT  NOT NULL
   as_of_date         DATE    NOT NULL
   updated_at         TIMESTAMPTZ DEFAULT now()
+
+-- v0.2 추가
+asset_snapshots                                  -- 월별 자산 스냅샷
+  year_month         VARCHAR(7) PRIMARY KEY      -- 'YYYY-MM'
+  total_assets       BIGINT  NOT NULL            -- 현금 + 투자 + 부동산 등 합
+  debt               BIGINT  NOT NULL DEFAULT 0  -- 대출/부채 합
+  memo               VARCHAR(500)
+  updated_at         TIMESTAMPTZ DEFAULT now()
+  -- net_worth = total_assets - debt (어플 레이어에서 계산)
 ```
 
 ### 6.2 핵심 규칙
@@ -261,7 +297,9 @@ current_balance(S) =
 | `/recurring/{id}/log` | GET | "기록하기" — `/transactions/new`로 정보 prefill 후 이동 |
 | `/tags` | GET / POST | 태그 목록 + 추가 |
 | `/tags/{id}` | POST | 수정/삭제 |
-| `/balances` | GET / POST | 기초 자산 조회/수정 |
+| `/balances` | GET / POST | 기초 자산 조회/수정 (잔액 계산의 출발점) |
+| `/assets` | GET | 월별 자산 스냅샷 목록 + 도넛 (v0.2) |
+| `/assets/{yearMonth}` | POST | 월별 스냅샷 저장 (`total_assets`, `debt`, `memo`) |
 | `/stats` | GET | 통계 페이지 |
 
 HTMX 활용 포인트:
@@ -519,6 +557,8 @@ budget-book/
 | D6 | 통화: KRW 단일 | 다중 통화 | v1 범위 축소 |
 | D7 | 데이터 격리: 약 (부부 공유) | 사용자별 분리 | 요구사항 (부부 공동 자산) |
 | D8 | `transactions ↔ recurring_transactions` FK 없음 | recurring_id 컬럼 유지 | 자동 생성 안 하므로 강결합 불필요. 이름·태그 기반 느슨한 연결 |
+| D9 | 자산은 **월별 스냅샷 수동 입력** + 부족하면 거래 누적으로 보간 | 거래 누적만으로 추정 / 일별 스냅샷 | 투자·부동산 가치는 거래로 표현 안 됨. 월 1회 수기 입력이면 부담 적음. 미입력 월은 거래 기반 폴백으로 line이 끊기지 않음 |
+| D10 | 통계 차트는 각 데이터에 맞는 타입 선택 (donut/bar/line) | 단일 타입 통일 | 사용자가 한눈에 파악하기 좋게. 섹션별 합계는 N=3이라 표가 더 효율적 |
 
 ---
 

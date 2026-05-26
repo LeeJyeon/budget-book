@@ -165,6 +165,49 @@ class StatsServiceTest {
     }
 
     @Test
+    fun `donutSlices keeps top N and folds the rest into a single 기타 bucket`() {
+        val from = LocalDate.of(2026, 5, 1)
+        val to = LocalDate.of(2026, 5, 31)
+        // 11 tags, descending totals 1000..990
+        val rows = (1..11).map { i -> tagAgg(i.toLong(), "tag$i", "#111111", (1001 - i).toLong()) }
+        every {
+            transactionRepository.sumByPeriodGroupedByTag(
+                TxType.EXPENSE, from.atStartOfDay(), to.atTime(23, 59, 59),
+            )
+        } returns rows
+
+        val slices = statsService.donutSlices(from, to, topN = 8)
+
+        assertThat(slices).hasSize(9)
+        assertThat(slices.take(8).map { it.tagName }).containsExactly(
+            "tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8",
+        )
+        val others = slices.last()
+        assertThat(others.tagName).isEqualTo("기타")
+        assertThat(others.tagId).isEqualTo(0L)
+        assertThat(others.color).isEqualTo("#94a3b8")
+        // tag9 + tag10 + tag11 = 992 + 991 + 990
+        assertThat(others.total).isEqualTo(992L + 991L + 990L)
+    }
+
+    @Test
+    fun `donutSlices returns all entries unchanged when count is within topN`() {
+        val from = LocalDate.of(2026, 5, 1)
+        val to = LocalDate.of(2026, 5, 31)
+        val rows = (1..3).map { i -> tagAgg(i.toLong(), "tag$i", "#222222", (100 - i).toLong()) }
+        every {
+            transactionRepository.sumByPeriodGroupedByTag(
+                TxType.EXPENSE, from.atStartOfDay(), to.atTime(23, 59, 59),
+            )
+        } returns rows
+
+        val slices = statsService.donutSlices(from, to, topN = 8)
+
+        assertThat(slices).hasSize(3)
+        assertThat(slices.none { it.tagName == "기타" }).isTrue()
+    }
+
+    @Test
     fun `defaultMonthRange returns first and last day of current Seoul month`() {
         val (from, to) = statsService.defaultMonthRange()
 

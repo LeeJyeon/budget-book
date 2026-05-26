@@ -4,68 +4,77 @@
 <head><title>통계 - budget-book</title></head>
 <body>
 <div layout:fragment="content">
-    <div class="flex items-center justify-between mb-4">
-        <h1 class="text-2xl font-bold">통계</h1>
+    <div class="flex items-center justify-between mb-5">
+        <h1 class="text-2xl font-bold tracking-tight text-ink-900">통계</h1>
     </div>
 
-    <section class="bg-white border rounded p-4 mb-6">
-        <form th:action="@{/stats}" method="get" class="flex flex-col sm:flex-row gap-2 sm:items-end">
+    <!-- Period filter -->
+    <section class="rounded-2xl shadow-card border border-ink-100 bg-white p-5 mb-6">
+        <form th:action="@{/stats}" method="get" class="flex flex-col sm:flex-row gap-3 sm:items-end">
             <div>
-                <label class="block text-xs text-gray-600 mb-1">시작일</label>
+                <label class="block text-xs text-ink-500 mb-1">시작일</label>
                 <input type="date" name="from" th:value="${#temporals.format(from, 'yyyy-MM-dd')}"
-                       class="border rounded px-2 py-1.5 text-sm"/>
+                       class="border border-ink-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"/>
             </div>
             <div>
-                <label class="block text-xs text-gray-600 mb-1">종료일</label>
+                <label class="block text-xs text-ink-500 mb-1">종료일</label>
                 <input type="date" name="to" th:value="${#temporals.format(to, 'yyyy-MM-dd')}"
-                       class="border rounded px-2 py-1.5 text-sm"/>
+                       class="border border-ink-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"/>
             </div>
             <div>
-                <label class="block text-xs text-gray-600 mb-1">섹션 (일별 추이)</label>
-                <select name="section" class="border rounded px-2 py-1.5 text-sm">
+                <label class="block text-xs text-ink-500 mb-1">섹션 (일별 추이)</label>
+                <select name="section"
+                        class="border border-ink-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                     <option th:each="s : ${sections}"
                             th:value="${s.name()}" th:text="${s.label}"
                             th:selected="${s == section}"></option>
                 </select>
             </div>
             <button type="submit"
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm rounded px-4 py-2">
+                    class="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg px-4 py-2 transition">
                 조회
             </button>
         </form>
     </section>
 
-    <section class="bg-white border rounded p-4 mb-6">
-        <h2 class="text-lg font-semibold mb-3">섹션별 수입 / 지출</h2>
+    <!-- Section summary table (no chart) -->
+    <section class="rounded-2xl shadow-card border border-ink-100 bg-white p-5 mb-6">
+        <h2 class="text-base font-semibold text-ink-900 mb-4">섹션별 수입 / 지출</h2>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-gray-50 text-gray-600">
-                <tr>
-                    <th class="text-left px-3 py-2">섹션</th>
-                    <th class="text-right px-3 py-2">수입</th>
-                    <th class="text-right px-3 py-2">지출</th>
-                    <th class="text-right px-3 py-2">순</th>
+            <table class="w-full text-sm tabular">
+                <thead class="text-ink-500 text-xs uppercase tracking-wide">
+                <tr class="border-b border-ink-100">
+                    <th class="text-left px-3 py-2 font-medium">섹션</th>
+                    <th class="text-right px-3 py-2 font-medium">수입</th>
+                    <th class="text-right px-3 py-2 font-medium">지출</th>
+                    <th class="text-right px-3 py-2 font-medium">순</th>
                 </tr>
                 </thead>
-                <tbody class="divide-y">
+                <tbody class="divide-y divide-ink-100">
                 <tr th:each="row : ${summary.perSection}">
-                    <td class="px-3 py-2" th:text="${row.section.label}">공용</td>
-                    <td class="text-right px-3 py-2 text-blue-700"
+                    <td class="px-3 py-2.5">
+                        <span th:classappend="${row.section.name() == 'SHARED'}   ? 'bg-shared-50 text-shared-600'   : ''"
+                              th:class="${row.section.name() == 'HUSBAND'} ? 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-husband-50 text-husband-600' :
+                                        (${row.section.name() == 'WIFE'}   ? 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-wife-50 text-wife-600' :
+                                                                              'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-shared-50 text-shared-600')"
+                              th:text="${row.section.label}">공용</span>
+                    </td>
+                    <td class="text-right px-3 py-2.5 text-income-600"
                         th:text="${#numbers.formatInteger(row.income, 3, 'COMMA') + '원'}">0원</td>
-                    <td class="text-right px-3 py-2 text-red-700"
+                    <td class="text-right px-3 py-2.5 text-expense-600"
                         th:text="${#numbers.formatInteger(row.expense, 3, 'COMMA') + '원'}">0원</td>
-                    <td class="text-right px-3 py-2 font-medium"
+                    <td class="text-right px-3 py-2.5 font-medium text-ink-900"
                         th:text="${#numbers.formatInteger(row.net, 3, 'COMMA') + '원'}">0원</td>
                 </tr>
                 </tbody>
-                <tfoot class="bg-gray-50 font-semibold">
+                <tfoot class="font-semibold border-t border-ink-100">
                 <tr>
-                    <td class="px-3 py-2">합계</td>
-                    <td class="text-right px-3 py-2 text-blue-700"
+                    <td class="px-3 py-2.5 text-ink-700">합계</td>
+                    <td class="text-right px-3 py-2.5 text-income-600"
                         th:text="${#numbers.formatInteger(summary.totalIncome, 3, 'COMMA') + '원'}">0원</td>
-                    <td class="text-right px-3 py-2 text-red-700"
+                    <td class="text-right px-3 py-2.5 text-expense-600"
                         th:text="${#numbers.formatInteger(summary.totalExpense, 3, 'COMMA') + '원'}">0원</td>
-                    <td class="text-right px-3 py-2"
+                    <td class="text-right px-3 py-2.5 text-ink-900"
                         th:text="${#numbers.formatInteger(summary.net, 3, 'COMMA') + '원'}">0원</td>
                 </tr>
                 </tfoot>
@@ -73,80 +82,196 @@
         </div>
     </section>
 
-    <div class="grid gap-4 lg:grid-cols-2 mb-6">
-        <section class="bg-white border rounded p-4">
-            <h2 class="text-lg font-semibold mb-3">태그별 지출 TOP 10</h2>
-            <p th:if="${#lists.isEmpty(tagBreakdown)}" class="text-sm text-gray-500">데이터가 없어요.</p>
-            <canvas id="tagChart" th:unless="${#lists.isEmpty(tagBreakdown)}" height="220"></canvas>
-        </section>
+    <!-- Donut: tag share -->
+    <section class="rounded-2xl shadow-card border border-ink-100 bg-white p-5 mb-6">
+        <div class="flex items-baseline justify-between mb-4">
+            <h2 class="text-base font-semibold text-ink-900">태그별 지출 비중</h2>
+            <span class="text-xs text-ink-500">상위 8개 + 기타</span>
+        </div>
+        <p th:if="${#lists.isEmpty(donut)}" class="text-sm text-ink-500">데이터가 없어요.</p>
+        <div th:unless="${#lists.isEmpty(donut)}" class="relative" style="max-width: 720px; margin: 0 auto;">
+            <canvas id="tagDonut" height="220"></canvas>
+        </div>
+    </section>
 
-        <section class="bg-white border rounded p-4">
-            <h2 class="text-lg font-semibold mb-3">월별 추이 (최근 6개월)</h2>
-            <canvas id="monthlyChart" height="220"></canvas>
-        </section>
-    </div>
+    <!-- Grouped bar: monthly income vs expense -->
+    <section class="rounded-2xl shadow-card border border-ink-100 bg-white p-5 mb-6">
+        <div class="flex items-baseline justify-between mb-4">
+            <h2 class="text-base font-semibold text-ink-900">월별 수입 vs 지출</h2>
+            <span class="text-xs text-ink-500">최근 6개월</span>
+        </div>
+        <canvas id="monthlyBar" height="200"></canvas>
+    </section>
 
-    <section class="bg-white border rounded p-4 mb-6">
-        <h2 class="text-lg font-semibold mb-3"
-            th:text="${section.label} + ' 섹션 일별 누적 잔액 추이'">공용 섹션 일별 추이</h2>
-        <canvas id="dailyChart" height="220"></canvas>
+    <!-- Line: net-worth trend -->
+    <section class="rounded-2xl shadow-card border border-ink-100 bg-white p-5 mb-6">
+        <div class="flex items-baseline justify-between mb-4">
+            <h2 class="text-base font-semibold text-ink-900">월별 순자산 추이</h2>
+            <span class="text-xs text-ink-500">최근 12개월 · 점선은 추정값(COMPUTED)</span>
+        </div>
+        <canvas id="assetTrend" height="200"></canvas>
+    </section>
+
+    <!-- Line: daily cumulative -->
+    <section class="rounded-2xl shadow-card border border-ink-100 bg-white p-5 mb-6">
+        <div class="flex items-baseline justify-between mb-4">
+            <h2 class="text-base font-semibold text-ink-900"
+                th:text="${section.label} + ' 섹션 일별 누적 잔액'">공용 섹션 일별 누적 잔액</h2>
+            <span class="text-xs text-ink-500">선택 기간</span>
+        </div>
+        <canvas id="dailyChart" height="200"></canvas>
     </section>
 
     <script th:inline="javascript">
       /*<![CDATA[*/
-      const tagLabels = /*[[${tagLabels}]]*/ [];
-      const tagValues = /*[[${tagValues}]]*/ [];
-      const tagColors = /*[[${tagColors}]]*/ [];
-      const monthlyLabels = /*[[${monthlyLabels}]]*/ [];
-      const monthlyIncome = /*[[${monthlyIncome}]]*/ [];
+      const donutLabels = /*[[${donutLabels}]]*/ [];
+      const donutValues = /*[[${donutValues}]]*/ [];
+      const donutColors = /*[[${donutColors}]]*/ [];
+
+      const monthlyLabels  = /*[[${monthlyLabels}]]*/ [];
+      const monthlyIncome  = /*[[${monthlyIncome}]]*/ [];
       const monthlyExpense = /*[[${monthlyExpense}]]*/ [];
+
+      const assetTrendLabels   = /*[[${assetTrendLabels}]]*/ [];
+      const assetTrendNetWorth = /*[[${assetTrendNetWorth}]]*/ [];
+      const assetTrendSources  = /*[[${assetTrendSources}]]*/ [];
+
       const dailyLabels = /*[[${dailyLabels}]]*/ [];
       const dailyValues = /*[[${dailyValues}]]*/ [];
 
-      if (tagLabels.length > 0 && document.getElementById('tagChart')) {
-        new Chart(document.getElementById('tagChart'), {
-          type: 'bar',
+      const fmtKRW = (v) => new Intl.NumberFormat('ko-KR').format(v) + '원';
+
+      // Donut
+      if (donutLabels.length > 0 && document.getElementById('tagDonut')) {
+        new Chart(document.getElementById('tagDonut'), {
+          type: 'doughnut',
           data: {
-            labels: tagLabels,
+            labels: donutLabels,
             datasets: [{
-              label: '지출 (원)',
-              data: tagValues,
-              backgroundColor: tagColors.length ? tagColors : '#60A5FA',
+              data: donutValues,
+              backgroundColor: donutColors,
+              borderColor: '#ffffff',
+              borderWidth: 2,
             }],
           },
-          options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } },
+          options: {
+            responsive: true,
+            cutout: '62%',
+            plugins: {
+              legend: { position: 'right', labels: { boxWidth: 12, font: { size: 12 } } },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0) || 1;
+                    const pct = ((ctx.parsed / total) * 100).toFixed(1);
+                    return `${ctx.label}: ${fmtKRW(ctx.parsed)} (${pct}%)`;
+                  },
+                },
+              },
+            },
+          },
         });
       }
 
-      if (document.getElementById('monthlyChart')) {
-        new Chart(document.getElementById('monthlyChart'), {
-          type: 'line',
+      // Grouped bar: income vs expense
+      if (document.getElementById('monthlyBar')) {
+        new Chart(document.getElementById('monthlyBar'), {
+          type: 'bar',
           data: {
             labels: monthlyLabels,
             datasets: [
-              { label: '수입', data: monthlyIncome, borderColor: '#2563EB', backgroundColor: 'rgba(37,99,235,0.15)', tension: 0.2 },
-              { label: '지출', data: monthlyExpense, borderColor: '#DC2626', backgroundColor: 'rgba(220,38,38,0.15)', tension: 0.2 },
+              { label: '수입', data: monthlyIncome,  backgroundColor: '#10b981', borderRadius: 6, borderSkipped: false },
+              { label: '지출', data: monthlyExpense, backgroundColor: '#f43f5e', borderRadius: 6, borderSkipped: false },
             ],
           },
-          options: { responsive: true },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: 'bottom', labels: { boxWidth: 12 } },
+              tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtKRW(ctx.parsed.y)}` } },
+            },
+            scales: {
+              y: { beginAtZero: true, ticks: { callback: (v) => new Intl.NumberFormat('ko-KR').format(v) } },
+              x: { grid: { display: false } },
+            },
+          },
         });
       }
 
+      // Asset trend: split into SNAPSHOT (solid) and COMPUTED (dashed) segments
+      if (document.getElementById('assetTrend') && assetTrendLabels.length > 0) {
+        // Dash pattern is decided per-segment based on the *end* point's source.
+        new Chart(document.getElementById('assetTrend'), {
+          type: 'line',
+          data: {
+            labels: assetTrendLabels,
+            datasets: [{
+              label: '순자산',
+              data: assetTrendNetWorth,
+              borderColor: '#4f46e5',
+              backgroundColor: 'rgba(79,70,229,0.10)',
+              fill: true,
+              tension: 0.25,
+              pointRadius: 4,
+              pointBackgroundColor: assetTrendSources.map(s => s === 'SNAPSHOT' ? '#4f46e5' : '#ffffff'),
+              pointBorderColor: '#4f46e5',
+              pointBorderWidth: 2,
+              segment: {
+                borderDash: (ctx) => {
+                  const i = ctx.p1DataIndex;
+                  return assetTrendSources[i] === 'COMPUTED' ? [6, 4] : undefined;
+                },
+              },
+            }],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const src = assetTrendSources[ctx.dataIndex] === 'SNAPSHOT' ? '실측' : '추정';
+                    return `${fmtKRW(ctx.parsed.y)} · ${src}`;
+                  },
+                },
+              },
+            },
+            scales: {
+              y: { ticks: { callback: (v) => new Intl.NumberFormat('ko-KR').format(v) } },
+              x: { grid: { display: false } },
+            },
+          },
+        });
+      }
+
+      // Daily cumulative line
       if (document.getElementById('dailyChart')) {
         new Chart(document.getElementById('dailyChart'), {
           type: 'line',
           data: {
             labels: dailyLabels,
             datasets: [{
-              label: '누적 잔액 변동',
+              label: '누적 잔액',
               data: dailyValues,
-              borderColor: '#059669',
-              backgroundColor: 'rgba(5,150,105,0.15)',
-              tension: 0.2,
+              borderColor: '#0ea5e9',
+              backgroundColor: 'rgba(14,165,233,0.12)',
               fill: true,
+              tension: 0.25,
+              pointRadius: 2,
             }],
           },
-          options: { responsive: true },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: (ctx) => fmtKRW(ctx.parsed.y) } },
+            },
+            scales: {
+              y: { ticks: { callback: (v) => new Intl.NumberFormat('ko-KR').format(v) } },
+              x: { grid: { display: false } },
+            },
+          },
         });
       }
       /*]]>*/

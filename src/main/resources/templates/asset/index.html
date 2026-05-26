@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>자산 추이 - budget-book</title></head>
+<body>
+<div layout:fragment="content">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+        <div>
+            <div class="text-xs uppercase tracking-wider text-ink-500">자산</div>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight mt-1">자산 추이</h1>
+            <p class="text-xs text-ink-500 mt-1">월별 총자산과 부채를 수동으로 기록해요. 비어 있는 달은 거래 누적으로 추정해요.</p>
+        </div>
+        <form method="get" action="/assets" class="flex items-center gap-2 text-sm">
+            <input type="month" name="from" th:value="${fromYm}"
+                   class="rounded-lg border border-ink-100 px-3 py-1.5 tabular bg-white"/>
+            <span class="text-ink-500">~</span>
+            <input type="month" name="to" th:value="${toYm}"
+                   class="rounded-lg border border-ink-100 px-3 py-1.5 tabular bg-white"/>
+            <button type="submit"
+                    class="rounded-lg bg-ink-100 hover:bg-ink-300/40 text-ink-700 px-3 py-1.5">조회</button>
+        </form>
+    </div>
+
+    <!-- Net worth hero -->
+    <section class="bg-white rounded-2xl shadow-card border border-ink-100 p-5 sm:p-6 mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+                <div class="text-xs text-ink-500">최근 순자산
+                    <span class="ml-1" th:if="${latestYearMonth != null}"
+                          th:text="'(' + ${latestYearMonth} + ')'">2026-05</span>
+                </div>
+                <div class="text-3xl sm:text-4xl font-bold tracking-tight tabular mt-1"
+                     th:text="${#numbers.formatInteger(latestNetWorth, 3, 'COMMA') + ' 원'}">0 원</div>
+                <div class="text-xs text-ink-500 mt-1 tabular">
+                    <span>총자산 </span>
+                    <span class="text-ink-700"
+                          th:text="${#numbers.formatInteger(latestTotalAssets, 3, 'COMMA') + ' 원'}">0 원</span>
+                    <span class="mx-2">·</span>
+                    <span>부채 </span>
+                    <span class="text-expense-600"
+                          th:text="${#numbers.formatInteger(latestDebt, 3, 'COMMA') + ' 원'}">0 원</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trend chart -->
+    <section class="bg-white rounded-2xl shadow-card border border-ink-100 p-5 sm:p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="font-semibold tracking-tight">최근 자산 추이</h2>
+            <span class="text-xs text-ink-500">총자산 / 순자산 (스냅샷 + 추정 블렌딩)</span>
+        </div>
+        <canvas id="assetTrend" height="120"></canvas>
+    </section>
+
+    <!-- Table -->
+    <section class="bg-white rounded-2xl shadow-card border border-ink-100 overflow-hidden">
+        <header class="flex items-center justify-between px-5 py-3.5 border-b border-ink-100">
+            <h2 class="font-semibold tracking-tight">월별 스냅샷</h2>
+            <span class="text-xs text-ink-500">
+                <span class="inline-flex items-center gap-1 mr-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> 직접 입력
+                </span>
+                <span class="inline-flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-ink-300"></span> 추정
+                </span>
+            </span>
+        </header>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-xs text-ink-500 bg-ink-50">
+                <tr>
+                    <th class="text-left font-medium px-5 py-2.5 w-32">월</th>
+                    <th class="text-right font-medium px-3 py-2.5">총자산 (원)</th>
+                    <th class="text-right font-medium px-3 py-2.5">부채 (원)</th>
+                    <th class="text-right font-medium px-3 py-2.5">순자산</th>
+                    <th class="text-left font-medium px-3 py-2.5">메모</th>
+                    <th class="text-right font-medium px-5 py-2.5 w-40">동작</th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-ink-100">
+                <tr th:each="row : ${rows}"
+                    th:with="ymStr=${row.yearMonthString}"
+                    class="align-middle">
+                    <td class="px-5 py-2.5">
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium tabular"
+                                  th:text="${row.yearMonth.year} + '년 ' + ${row.yearMonth.monthValue} + '월'">2026년 5월</span>
+                            <span th:if="${row.isSnapshot}"
+                                  class="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700">직접 입력</span>
+                            <span th:unless="${row.isSnapshot}"
+                                  class="text-[10px] px-1.5 py-0.5 rounded-full bg-ink-100 text-ink-500">추정</span>
+                        </div>
+                    </td>
+                    <form th:action="@{'/assets/' + ${ymStr}}" method="post"
+                          th:attr="id='form-' + ${ymStr}">
+                    </form>
+                    <td class="px-3 py-2.5 text-right">
+                        <input type="number" name="totalAssets" min="0" step="10000"
+                               inputmode="numeric" pattern="[0-9]*" required
+                               th:value="${row.totalAssets}"
+                               th:attr="form='form-' + ${ymStr}"
+                               class="w-36 text-right border border-ink-100 rounded-lg px-2 py-1 tabular focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
+                    </td>
+                    <td class="px-3 py-2.5 text-right">
+                        <input type="number" name="debt" min="0" step="10000"
+                               inputmode="numeric" pattern="[0-9]*" required
+                               th:value="${row.debt}"
+                               th:attr="form='form-' + ${ymStr}"
+                               class="w-32 text-right border border-ink-100 rounded-lg px-2 py-1 tabular focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
+                    </td>
+                    <td class="px-3 py-2.5 text-right font-semibold tabular"
+                        th:classappend="${row.netWorth >= 0} ? 'text-ink-900' : 'text-expense-600'"
+                        th:text="${#numbers.formatInteger(row.netWorth, 3, 'COMMA')}">0</td>
+                    <td class="px-3 py-2.5">
+                        <input type="text" name="memo" maxlength="500"
+                               th:value="${row.memo}"
+                               th:attr="form='form-' + ${ymStr}"
+                               placeholder="메모 (선택)"
+                               class="w-full border border-ink-100 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/30"/>
+                    </td>
+                    <td class="px-5 py-2.5 text-right">
+                        <div class="inline-flex gap-1">
+                            <button type="submit"
+                                    th:attr="form='form-' + ${ymStr}"
+                                    class="rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs px-3 py-1.5">
+                                저장
+                            </button>
+                            <form th:action="@{'/assets/' + ${ymStr} + '/delete'}" method="post"
+                                  th:if="${row.isSnapshot}" class="inline"
+                                  onsubmit="return confirm('이 달 스냅샷을 삭제할까요? 추정값으로 돌아갑니다.');">
+                                <button type="submit"
+                                        class="rounded-lg bg-white border border-ink-100 hover:bg-ink-100 text-ink-700 text-xs px-3 py-1.5">
+                                    삭제
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(rows)}">
+                    <td colspan="6" class="px-5 py-10 text-center text-sm text-ink-500">
+                        조회된 데이터가 없어요.
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <script th:inline="javascript">
+      /*<![CDATA[*/
+      const trendLabels = /*[[${trendLabels}]]*/ [];
+      const trendAssets = /*[[${trendAssets}]]*/ [];
+      const trendNet    = /*[[${trendNetWorth}]]*/ [];
+      const ctx = document.getElementById('assetTrend');
+      if (ctx && window.Chart) {
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: trendLabels,
+            datasets: [
+              { label: '총자산', data: trendAssets, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,.10)', fill: true,  tension: 0.3 },
+              { label: '순자산', data: trendNet,    borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.10)', fill: false, tension: 0.3 }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } },
+            scales: { y: { beginAtZero: false, ticks: { callback: (v) => Number(v).toLocaleString() } } }
+          }
+        });
+      }
+      /*]]>*/
+    </script>
+
+</div>
+</body>
+</html>

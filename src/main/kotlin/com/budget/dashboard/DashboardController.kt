@@ -1,5 +1,7 @@
 package com.budget.dashboard
 
+import com.budget.asset.AssetTrendPoint
+import com.budget.asset.AssetTrendService
 import com.budget.balance.BalanceService
 import com.budget.balance.SectionBalanceView
 import com.budget.common.Section
@@ -27,6 +29,7 @@ class DashboardController(
     private val balanceService: BalanceService,
     private val statsService: StatsService,
     private val transactionRepository: TransactionRepository,
+    private val assetTrendService: AssetTrendService,
 ) {
     private val zone: ZoneId = ZoneId.of("Asia/Seoul")
     private val monthFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM")
@@ -64,6 +67,19 @@ class DashboardController(
 
         val totalCurrent: Long = balances.sumOf { it.currentBalance }
 
+        // Asset trend (last 12 months) + net worth
+        val trendPoints: List<AssetTrendPoint> = assetTrendService.trend(12, today)
+        val assetTrendLabels: List<String> = trendPoints.map { it.yearMonth.format(monthFmt) }
+        val assetTrendAssets: List<Long> = trendPoints.map { it.totalAssets }
+        val assetTrendNetWorth: List<Long> = trendPoints.map { it.netWorth }
+        val netWorth: Long = assetTrendService.latestNetWorth(today)
+
+        // Saving rate: (income - expense) / income * 100, integer; null if income == 0
+        val income: Long = monthSummary.totalIncome
+        val expense: Long = monthSummary.totalExpense
+        val savingRatePercent: Int? = if (income == 0L) null else ((income - expense) * 100 / income).toInt()
+        val savingRate: String = savingRatePercent?.let { "$it%" } ?: "—"
+
         model.addAttribute("today", today)
         model.addAttribute("selectedYm", selectedYm)
         model.addAttribute("selectedMonth", selectedYm.format(monthFmt))
@@ -77,6 +93,12 @@ class DashboardController(
         model.addAttribute("monthSummary", monthSummary)
         model.addAttribute("recentTransactions", recent)
         model.addAttribute("totalCurrentBalance", totalCurrent)
+        model.addAttribute("netWorth", netWorth)
+        model.addAttribute("assetTrendLabels", assetTrendLabels)
+        model.addAttribute("assetTrendAssets", assetTrendAssets)
+        model.addAttribute("assetTrendNetWorth", assetTrendNetWorth)
+        model.addAttribute("savingRatePercent", savingRatePercent)
+        model.addAttribute("savingRate", savingRate)
 
         return "dashboard/index"
     }

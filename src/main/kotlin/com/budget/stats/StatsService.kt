@@ -96,6 +96,30 @@ class StatsService(
         }
     }
 
+    /**
+     * Donut-friendly tag breakdown: top [topN] entries kept as-is, the rest summed into a single
+     * "기타" bucket (tagId = 0, color = #94a3b8). Returns an empty list when there is no data.
+     */
+    fun donutSlices(
+        from: LocalDate,
+        to: LocalDate,
+        type: TxType = TxType.EXPENSE,
+        topN: Int = 8,
+    ): List<TagBreakdownItem> {
+        val all = tagBreakdown(from, to, type = type, limit = Int.MAX_VALUE)
+        if (all.size <= topN) return all
+        val top = all.take(topN)
+        val rest = all.drop(topN)
+        val restTotal = rest.sumOf { it.total }
+        if (restTotal == 0L) return top
+        return top + TagBreakdownItem(
+            tagId = 0L,
+            tagName = "기타",
+            color = "#94a3b8",
+            total = restTotal,
+        )
+    }
+
     fun monthlyTrend(): List<MonthlyPoint> = monthlyTrend(6, LocalDate.now(zone))
 
     internal fun monthlyTrend(monthsBack: Int, today: LocalDate): List<MonthlyPoint> {

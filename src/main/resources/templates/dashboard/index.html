@@ -30,9 +30,14 @@
     <section class="bg-white rounded-2xl shadow-card border border-ink-100 p-5 sm:p-6 mb-6">
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
-                <div class="text-xs text-ink-500">총 잔액 (오늘 기준)</div>
+                <div class="text-xs text-ink-500">순자산 (Net Worth)</div>
                 <div class="text-3xl sm:text-4xl font-bold tracking-tight tabular mt-1"
-                     th:text="${#numbers.formatInteger(totalCurrentBalance, 3, 'COMMA') + ' 원'}">0 원</div>
+                     th:text="${#numbers.formatInteger(netWorth, 3, 'COMMA') + ' 원'}">0 원</div>
+                <div class="text-xs text-ink-500 mt-1">
+                    거래 누적 잔액
+                    <span class="tabular"
+                          th:text="${#numbers.formatInteger(totalCurrentBalance, 3, 'COMMA') + ' 원'}">0 원</span>
+                </div>
             </div>
 
             <!-- Month picker -->
@@ -50,6 +55,31 @@
                    class="text-xs text-brand-600 hover:underline ml-1">이번 달로</a>
             </form>
         </div>
+    </section>
+
+    <!-- 12-month asset trend -->
+    <section class="bg-white rounded-2xl shadow-card border border-ink-100 p-5 sm:p-6 mb-6">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="font-semibold tracking-tight">12개월 자산 추이</h2>
+            <span class="text-xs text-ink-500">● 직접 입력 · ◌ 추정</span>
+        </div>
+        <canvas id="assetTrend" height="100"></canvas>
+        <script th:inline="javascript">
+            const labels = /*[[${assetTrendLabels}]]*/ [];
+            const assets = /*[[${assetTrendAssets}]]*/ [];
+            const net    = /*[[${assetTrendNetWorth}]]*/ [];
+            new Chart(document.getElementById('assetTrend'), {
+                type: 'line',
+                data: { labels, datasets: [
+                    { label: '총자산', data: assets, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,.10)', fill: true, tension: 0.3 },
+                    { label: '순자산', data: net,    borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.05)', fill: false, tension: 0.3 }
+                ]},
+                options: {
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+        </script>
     </section>
 
     <!-- Selected-month banner -->
@@ -90,7 +120,7 @@
             <a th:href="@{/stats(from=${monthFrom}, to=${monthTo})}"
                class="text-xs text-brand-600 hover:underline">통계 자세히 →</a>
         </div>
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div class="rounded-xl bg-income-500/5 p-4">
                 <div class="text-xs text-ink-500">수입</div>
                 <div class="text-xl font-bold text-income-600 tabular mt-1"
@@ -108,6 +138,11 @@
                      th:text="${(monthSummary.net >= 0 ? '+' : '') + #numbers.formatInteger(monthSummary.net, 3, 'COMMA') + ' 원'}">
                     +0 원
                 </div>
+            </div>
+            <div class="rounded-xl bg-brand-500/5 p-4">
+                <div class="text-xs text-ink-500">저축률</div>
+                <div class="text-xl font-bold text-brand-600 tabular mt-1"
+                     th:text="${savingRate}">—</div>
             </div>
         </div>
     </section>

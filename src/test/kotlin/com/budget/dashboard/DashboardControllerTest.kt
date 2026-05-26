@@ -1,5 +1,7 @@
 package com.budget.dashboard
 
+import com.budget.asset.AssetTrendPoint
+import com.budget.asset.AssetTrendService
 import com.budget.auth.User
 import com.budget.balance.BalanceService
 import com.budget.balance.SectionBalanceView
@@ -27,6 +29,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.model
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.YearMonth
 
 @WebMvcTest(DashboardController::class)
 @Import(DashboardControllerTest.MinimalSecurityConfig::class)
@@ -43,6 +46,9 @@ class DashboardControllerTest @Autowired constructor(
 
     @MockkBean
     private lateinit var transactionRepository: TransactionRepository
+
+    @MockkBean
+    private lateinit var assetTrendService: AssetTrendService
 
     @org.springframework.boot.test.context.TestConfiguration
     class MinimalSecurityConfig {
@@ -77,19 +83,35 @@ class DashboardControllerTest @Autowired constructor(
         ),
     )
 
+    private fun trendPoints(): List<AssetTrendPoint> = (0..11).map { offset ->
+        AssetTrendPoint(
+            yearMonth = YearMonth.of(2025, 6).plusMonths(offset.toLong()),
+            totalAssets = 100_000_000L + offset * 1_000_000L,
+            debt = 0L,
+            source = AssetTrendPoint.Source.COMPUTED,
+        )
+    }
+
+    private fun stubAssetTrend() {
+        every { assetTrendService.trend(any(), any()) } returns trendPoints()
+        every { assetTrendService.latestNetWorth(any()) } returns 100_000_000L
+    }
+
     @Test
     fun `GET root renders dashboard with required model attributes`() {
         val asOf = LocalDate.of(2026, 1, 1)
         every { balanceService.listAll() } returns balanceViews(asOf)
         every { statsService.sectionSummary(any(), any()) } returns monthSummary()
         every { transactionRepository.findTop10ByOccurredAtBetweenOrderByOccurredAtDescIdDesc(any(), any()) } returns emptyList()
+        stubAssetTrend()
 
         mockMvc.perform(get("/"))
             .andExpect(status().isOk)
             .andExpect(model().attributeExists("balances", "monthSummary", "recentTransactions", "balanceCards"))
             .andExpect(model().attributeExists("selectedMonth", "prevMonth", "nextMonth", "totalCurrentBalance"))
             .andExpect(content().string(containsString("안녕하세요")))
-            .andExpect(content().string(containsString("총 잔액")))
+            .andExpect(content().string(containsString("순자산")))
+            .andExpect(content().string(containsString("거래 누적 잔액")))
     }
 
     @Test
@@ -98,6 +120,7 @@ class DashboardControllerTest @Autowired constructor(
         every { balanceService.listAll() } returns balanceViews(asOf)
         every { statsService.sectionSummary(any(), any()) } returns monthSummary()
         every { transactionRepository.findTop10ByOccurredAtBetweenOrderByOccurredAtDescIdDesc(any(), any()) } returns emptyList()
+        stubAssetTrend()
 
         val result = mockMvc.perform(get("/"))
             .andExpect(status().isOk)
@@ -133,6 +156,7 @@ class DashboardControllerTest @Autowired constructor(
         every {
             transactionRepository.findTop10ByOccurredAtBetweenOrderByOccurredAtDescIdDesc(any(), any())
         } returns listOf(tx)
+        stubAssetTrend()
 
         mockMvc.perform(get("/"))
             .andExpect(status().isOk)
@@ -148,6 +172,7 @@ class DashboardControllerTest @Autowired constructor(
         every {
             transactionRepository.findTop10ByOccurredAtBetweenOrderByOccurredAtDescIdDesc(any(), any())
         } returns emptyList()
+        stubAssetTrend()
 
         mockMvc.perform(get("/").param("month", "2026-03"))
             .andExpect(status().isOk)
@@ -167,10 +192,69 @@ class DashboardControllerTest @Autowired constructor(
         every {
             transactionRepository.findTop10ByOccurredAtBetweenOrderByOccurredAtDescIdDesc(any(), any())
         } returns emptyList()
+        stubAssetTrend()
 
         mockMvc.perform(get("/").param("month", "not-a-month"))
             .andExpect(status().isOk)
             .andExpect(model().attribute("isCurrentMonth", true))
+    }
+
+    @Test
+    fun `GET root exposes asset trend, savingRate and netWorth in model`() {
+        val asOf = LocalDate.of(2026, 1, 1)
+        every { balanceService.listAll() } returns balanceViews(asOf)
+        // income = 380_000, expense = 100_000 -> saving rate = 280_000 / 380_000 * 100 = 73%
+        every { statsService.sectionSummary(any(), any()) } returns monthSummary()
+        every {
+            transactionRepository.findTop10ByOccurredAtBetweenOrderByOccurredAtDescIdDesc(any(), any())
+        } returns emptyList()
+        every { assetTrendService.trend(any(), any()) } returns trendPoints()
+        every { assetTrendService.latestNetWorth(any()) } returns 123_456_789L
+
+        val result = mockMvc.perform(get("/"))
+            .andExpect(status().isOk)
+            .andExpect(model().attributeExists(
+                "netWorth", "assetTrendLabels", "assetTrendAssets",
+                "assetTrendNetWorth", "savingRate", "savingRatePercent",
+            ))
+            .andExpect(model().attribute("netWorth", 123_456_789L))
+            .andExpect(model().attribute("savingRatePercent", 73))
+            .andExpect(model().attribute("savingRate", "73%"))
+            .andReturn()
+
+        @Suppress("UNCHECKED_CAST")
+        val labels = result.modelAndView!!.model["assetTrendLabels"] as List<String>
+        @Suppress("UNCHECKED_CAST")
+        val assets = result.modelAndView!!.model["assetTrendAssets"] as List<Long>
+        @Suppress("UNCHECKED_CAST")
+        val net = result.modelAndView!!.model["assetTrendNetWorth"] as List<Long>
+        assertThat(labels).hasSize(12)
+        assertThat(labels.first()).isEqualTo("2025-06")
+        assertThat(labels.last()).isEqualTo("2026-05")
+        assertThat(assets).hasSize(12)
+        assertThat(net).hasSize(12)
+    }
+
+    @Test
+    fun `GET root shows dash for saving rate when income is zero`() {
+        val asOf = LocalDate.of(2026, 1, 1)
+        every { balanceService.listAll() } returns balanceViews(asOf)
+        every { statsService.sectionSummary(any(), any()) } returns PeriodSummary(
+            from = LocalDate.of(2026, 5, 1),
+            to = LocalDate.of(2026, 5, 31),
+            perSection = listOf(
+                SectionTypeSummary(Section.SHARED, 0L, 50_000L),
+            ),
+        )
+        every {
+            transactionRepository.findTop10ByOccurredAtBetweenOrderByOccurredAtDescIdDesc(any(), any())
+        } returns emptyList()
+        stubAssetTrend()
+
+        mockMvc.perform(get("/"))
+            .andExpect(status().isOk)
+            .andExpect(model().attribute("savingRatePercent", null as Int?))
+            .andExpect(model().attribute("savingRate", "—"))
     }
 
 }
