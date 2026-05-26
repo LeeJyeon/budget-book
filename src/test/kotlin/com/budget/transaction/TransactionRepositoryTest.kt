@@ -33,6 +33,8 @@ class TransactionRepositoryTest @Autowired constructor(
 
     @BeforeEach
     fun setUp() {
+        // V3 시드 태그가 들어 있으므로 깨끗한 상태에서 시작.
+        tagRepository.deleteAllInBatch()
         user = userRepository.save(
             User(email = "tester@example.com", displayName = "Tester", role = UserRole.HUSBAND),
         )

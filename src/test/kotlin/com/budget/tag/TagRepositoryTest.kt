@@ -3,6 +3,7 @@ package com.budget.tag
 import com.budget.common.TagType
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
@@ -12,6 +13,13 @@ import org.springframework.dao.DataIntegrityViolationException
 class TagRepositoryTest @Autowired constructor(
     private val tagRepository: TagRepository,
 ) {
+
+    @BeforeEach
+    fun clearSeedTags() {
+        // V3 시드 태그가 들어 있으므로 각 테스트는 깨끗한 상태에서 시작 (트랜잭션 롤백되므로 시드는 보존).
+        // deleteAllInBatch는 즉시 DELETE를 실행하여 이후 INSERT와 UNIQUE 충돌이 나지 않게 한다.
+        tagRepository.deleteAllInBatch()
+    }
 
     @Test
     fun `findAllByOrderByTypeAscNameAsc returns tags ordered by type then name`() {
