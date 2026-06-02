@@ -1,0 +1,10 @@
+.git
+.gitignore
+.gitattributes
+.idea
+.gradle
+build
+docs
+README.md
+*.md
+.DS_Store
