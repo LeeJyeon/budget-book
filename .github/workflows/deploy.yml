@@ -40,6 +40,7 @@ jobs:
         run: |
           gcloud builds submit \
             --tag $REGION-docker.pkg.dev/$PROJECT_ID/$REPO/app:${{ github.sha }} \
+            --default-buckets-behavior=REGIONAL_USER_OWNED_BUCKET \
             --quiet
 
       - name: Deploy to Cloud Run
